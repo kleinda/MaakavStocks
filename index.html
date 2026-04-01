@@ -791,6 +791,102 @@
       color: #fff;
       border-color: #37474f;
     }
+
+    /* ── Dark Mode ───────────────────────────────────────────────── */
+    body.dark {
+      --bg: #0f1117;
+      --card-bg: #1a1d27;
+      --text: #e8eaf6;
+      --text-muted: #9e9e9e;
+      --shadow: 0 2px 12px rgba(0,0,0,0.4);
+      --shadow-hover: 0 6px 24px rgba(0,0,0,0.6);
+      --up-bg: #1b3a2a;
+      --down-bg: #3a1b1b;
+    }
+    body.dark .controls-row     { background: #13151e; border-color: #2d3748; }
+    body.dark .filter-select    { background: #1a1d27; color: #e8eaf6; border-color: #3949ab; }
+    body.dark .market-table thead tr { background: #1e2235; }
+    body.dark .market-table th  { background: #1e2235; color: #7986cb; }
+    body.dark .market-table td  { border-color: #2d3748; }
+    body.dark .mrow-us td       { background: #171a2b; }
+    body.dark .mrow-il td       { background: #151d14; }
+    body.dark .mrow-crypto td   { background: #1a1629; }
+    body.dark .mrow-tech td     { background: #1e1e12; }
+    body.dark .mrow-watchlist td{ background: #141620; }
+    body.dark .market-table-scroll { border-color: #3949ab; }
+    body.dark .market-footer    { color: #555; }
+    body.dark .modal-box        { background: #1a1d27; }
+    body.dark .modal-title      { color: #e8eaf6; }
+    body.dark .form-control     { background: #252837; border-color: #3d4262; color: #e8eaf6; }
+    body.dark .form-label       { color: #9e9e9e; }
+    body.dark .btn-cancel       { background: #2d3748; color: #9e9e9e; }
+    body.dark .error-banner     { background: #3a1b1b; border-color: #c62828; }
+    body.dark .badge-neutral    { background: #2d3748; color: #9e9e9e; }
+    body.dark .validation-msg.checking { background: #1a2a40; color: #90caf9; }
+    body.dark .validation-msg.valid    { background: #1b3a2a; color: #a5d6a7; }
+    body.dark .validation-msg.invalid  { background: #3a1b1b; color: #ef9a9a; }
+
+    /* ── Sort headers ────────────────────────────────────────────── */
+    .market-table th[data-col] { cursor: pointer; user-select: none; }
+    .market-table th[data-col]:hover { background: #bbdefb; }
+    body.dark .market-table th[data-col]:hover { background: #283060; }
+    .sort-indicator { font-size: 0.72em; opacity: 0.75; }
+
+    /* ── Row clickable ───────────────────────────────────────────── */
+    .market-table tr.mrow { cursor: pointer; }
+
+    /* ── Chart Modal ─────────────────────────────────────────────── */
+    .chart-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+      padding: 20px;
+      backdrop-filter: blur(3px);
+    }
+    .chart-overlay.hidden { display: none; }
+    .chart-box {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 24px;
+      width: 100%;
+      max-width: 740px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: modalIn 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .chart-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .chart-symbol { font-size: 1.4rem; font-weight: 900; color: var(--text); direction: ltr; }
+    .chart-name   { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+    .chart-close  {
+      background: none; border: none; font-size: 1.3rem;
+      color: var(--text-muted); cursor: pointer;
+      padding: 2px 8px; border-radius: 6px; line-height: 1;
+    }
+    .chart-close:hover { background: rgba(0,0,0,0.08); }
+    body.dark .chart-close:hover { background: rgba(255,255,255,0.08); }
+    .chart-stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 0.84rem;
+      padding: 10px 14px;
+      background: rgba(0,0,0,0.04);
+      border-radius: 10px;
+    }
+    body.dark .chart-stats { background: rgba(255,255,255,0.05); }
+    .chart-stat { color: var(--text-muted); }
+    .chart-canvas-wrap { height: 280px; position: relative; }
+    @media (max-width: 480px) { .chart-canvas-wrap { height: 200px; } .chart-box { padding: 16px; gap: 10px; } }
   </style>
 </head>
 <body>
@@ -813,6 +909,7 @@
   </div>
 
   <div class="toolbar-actions">
+    <button class="btn-toolbar" id="btn-dark-mode" title="מצב לילה">🌙</button>
     <button class="btn-toolbar" id="btn-manual-refresh" title="רענן עכשיו">&#8635; רענן</button>
     <button class="btn-toolbar btn-add" id="btn-open-modal">+ הוסף נייר ערך</button>
   </div>
@@ -829,15 +926,15 @@
     <table class="market-table">
       <thead>
         <tr>
-          <th>Time</th>
-          <th>Symbol</th>
-          <th>Name</th>
-          <th>Category</th>
-          <th>Value</th>
+          <th data-col="time">Time</th>
+          <th data-col="symbol">Symbol</th>
+          <th data-col="name">Name</th>
+          <th data-col="category">Category</th>
+          <th data-col="price">Value</th>
           <th class="col-break"></th>
-          <th>%day</th>
-          <th>Pre</th>
-          <th>Ytd</th>
+          <th data-col="change">%day</th>
+          <th data-col="pre">Pre</th>
+          <th data-col="ytd">Ytd</th>
           <th></th>
         </tr>
       </thead>
@@ -854,6 +951,23 @@
 
 <!-- ── Main (placeholder for future management) ──────────── -->
 <main id="app" style="display:none"></main>
+
+<!-- ── Chart Modal ───────────────────────────────────────────── -->
+<div class="chart-overlay hidden" id="chart-overlay">
+  <div class="chart-box">
+    <div class="chart-header">
+      <div>
+        <div class="chart-symbol" id="chart-symbol"></div>
+        <div class="chart-name" id="chart-name"></div>
+      </div>
+      <button class="chart-close" id="chart-close">✕</button>
+    </div>
+    <div class="chart-stats" id="chart-stats"></div>
+    <div class="chart-canvas-wrap">
+      <canvas id="chart-canvas"></canvas>
+    </div>
+  </div>
+</div>
 
 <!-- ── Add Stock Modal ───────────────────────────────────────── -->
 <div class="modal-overlay hidden" id="modal-overlay">
@@ -891,6 +1005,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
@@ -963,6 +1078,7 @@ const STATE = {
   activeFilters: ['מניות', 'מדדים ותעודות סל', 'מטבעות', 'אגחים'],
   lastMarketQuotes: [],
   marketPrevClose: {},  // { symbol: Dec31close } — fetched once per session for YTD calc
+  sort: { col: null, dir: 'asc' },
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -1268,8 +1384,9 @@ function renderUnifiedTable() {
   if (!tbody) return;
   tbody.innerHTML = '';
 
-  const assets      = getAllAssets();
+  const assets      = sortAssets(getAllAssets());
   const activeFilters = STATE.activeFilters;
+  updateSortIndicators();
   let count = 0;
 
   assets.forEach(asset => {
@@ -1711,6 +1828,191 @@ async function refreshMarket() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   DARK MODE
+══════════════════════════════════════════════════════════════ */
+function initDarkMode() {
+  if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
+  updateDarkBtn();
+}
+function toggleDarkMode() {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('darkMode', document.body.classList.contains('dark') ? '1' : '0');
+  updateDarkBtn();
+}
+function updateDarkBtn() {
+  const btn = document.getElementById('btn-dark-mode');
+  if (btn) btn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+}
+document.getElementById('btn-dark-mode').addEventListener('click', toggleDarkMode);
+
+/* ══════════════════════════════════════════════════════════════
+   SORT
+══════════════════════════════════════════════════════════════ */
+function sortAssets(assets) {
+  const { col, dir } = STATE.sort;
+  if (!col) return assets;
+  const m = dir === 'asc' ? 1 : -1;
+  return [...assets].sort((a, b) => {
+    let av, bv;
+    switch (col) {
+      case 'time':     av = a.time ?? 0;                              bv = b.time ?? 0;                              break;
+      case 'symbol':   av = a.symbol || '';                           bv = b.symbol || '';                           break;
+      case 'name':     av = a.name || '';                             bv = b.name || '';                             break;
+      case 'category': av = CONFIG.CATEGORIES.indexOf(a.category);   bv = CONFIG.CATEGORIES.indexOf(b.category);   break;
+      case 'price':    av = a.price ?? -Infinity;                     bv = b.price ?? -Infinity;                     break;
+      case 'change':   av = a.change ?? -Infinity;                    bv = b.change ?? -Infinity;                    break;
+      case 'pre':      av = a.preChange ?? -Infinity;                 bv = b.preChange ?? -Infinity;                 break;
+      case 'ytd':      av = a.ytd ?? -Infinity;                       bv = b.ytd ?? -Infinity;                       break;
+      default: return 0;
+    }
+    if (typeof av === 'string') return m * av.localeCompare(bv);
+    return m * (av - bv);
+  });
+}
+
+function initSortHeaders() {
+  document.querySelectorAll('.market-table th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (STATE.sort.col === col) {
+        STATE.sort.dir = STATE.sort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        STATE.sort.col = col;
+        STATE.sort.dir = 'asc';
+      }
+      renderUnifiedTable();
+    });
+  });
+}
+
+function updateSortIndicators() {
+  document.querySelectorAll('.market-table th[data-col]').forEach(th => {
+    th.querySelectorAll('.sort-indicator').forEach(el => el.remove());
+    if (th.dataset.col === STATE.sort.col) {
+      const span = document.createElement('span');
+      span.className = 'sort-indicator';
+      span.textContent = STATE.sort.dir === 'asc' ? ' ▲' : ' ▼';
+      th.appendChild(span);
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CHART MODAL
+══════════════════════════════════════════════════════════════ */
+let _chartInstance = null;
+
+function closeChartModal() {
+  document.getElementById('chart-overlay').classList.add('hidden');
+  if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
+}
+
+async function openChartModal(symbol, name) {
+  document.getElementById('chart-overlay').classList.remove('hidden');
+  document.getElementById('chart-symbol').textContent = symbol;
+  document.getElementById('chart-name').textContent = name && name !== symbol ? name : '';
+  document.getElementById('chart-stats').innerHTML = '<span class="chart-stat"><span class="spinner"></span> טוען...</span>';
+  if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
+
+  try {
+    let data = null;
+    try {
+      const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}?interval=1d&range=1y`,
+        { signal: AbortSignal.timeout(10000) });
+      if (res.ok) data = await res.json();
+    } catch(e) {}
+    if (!data) {
+      const url = CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + '?interval=1d&range=1y';
+      data = await proxyFetch(url);
+    }
+
+    const result = data?.chart?.result?.[0];
+    if (!result) throw new Error('אין נתונים');
+
+    const timestamps = result.timestamp || [];
+    const closes = result.indicators?.quote?.[0]?.close || [];
+    const pairs = timestamps.map((t, i) => ({ t, c: closes[i] })).filter(p => p.c != null);
+    if (pairs.length === 0) throw new Error('אין נקודות נתונים');
+
+    const labels = pairs.map(p => {
+      const d = new Date(p.t * 1000);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+    const values  = pairs.map(p => p.c);
+    const min52   = Math.min(...values);
+    const max52   = Math.max(...values);
+    const first   = values[0];
+    const last    = values[values.length - 1];
+    const chgPct  = ((last - first) / first * 100);
+    const isUp    = chgPct >= 0;
+    const lineColor = isUp ? '#1b8a3c' : '#c62828';
+    const fmt = v => v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+
+    document.getElementById('chart-stats').innerHTML = `
+      <span class="chart-stat">52W גבוה: <strong style="color:#1b8a3c">${fmt(max52)}</strong></span>
+      <span class="chart-stat">52W נמוך: <strong style="color:#c62828">${fmt(min52)}</strong></span>
+      <span class="chart-stat">שנה: <strong style="color:${lineColor}">${isUp?'+':''}${chgPct.toFixed(2)}%</strong></span>
+    `;
+
+    const isDark    = document.body.classList.contains('dark');
+    const tickColor = isDark ? '#9e9e9e' : '#666';
+    const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+
+    const ctx = document.getElementById('chart-canvas').getContext('2d');
+    _chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: lineColor,
+          backgroundColor: lineColor + '22',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.3,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: ctx => ' ' + fmt(ctx.parsed.y) }
+          }
+        },
+        scales: {
+          x: { ticks: { color: tickColor, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: gridColor } },
+          y: { position: 'left', ticks: { color: tickColor, maxTicksLimit: 6 }, grid: { color: gridColor } }
+        },
+        interaction: { mode: 'index', intersect: false },
+      }
+    });
+  } catch(e) {
+    document.getElementById('chart-stats').innerHTML = `<span style="color:#e53935">שגיאה: ${escHtml(e.message)}</span>`;
+  }
+}
+
+document.getElementById('chart-close').addEventListener('click', closeChartModal);
+document.getElementById('chart-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeChartModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChartModal(); });
+
+// Row click → open chart
+document.getElementById('market-tbody').addEventListener('click', function(e) {
+  if (e.target.closest('.btn-remove-row')) return;
+  const tr = e.target.closest('tr.mrow');
+  if (!tr) return;
+  const symbolEl = tr.querySelector('.col-symbol div');
+  const nameEl   = tr.querySelector('.col-name');
+  const symbol   = symbolEl?.textContent?.trim();
+  const name     = nameEl?.textContent?.trim();
+  if (symbol) openChartModal(symbol, name);
+});
+
+/* ══════════════════════════════════════════════════════════════
    FILTER BAR
 ══════════════════════════════════════════════════════════════ */
 function renderFilterBar() {
@@ -1753,6 +2055,8 @@ function renderFilterBar() {
    INIT
 ══════════════════════════════════════════════════════════════ */
 async function init() {
+  initDarkMode();
+  initSortHeaders();
   await migrateFromLocalStorage(); // one-time localStorage→Firestore migration
   initFirestoreListener();         // real-time sync + data fetch handled inside listener
   renderFilterBar();
