@@ -646,6 +646,7 @@
     .mrow-crypto    td { background: #ede7f6; }
     .mrow-tech      td { background: #fffde7; }
     .mrow-watchlist td { background: #fafafa; }
+    .mrow-watch     td { background: #e0f7fa; }
 
     .market-table tr:hover td { filter: brightness(0.96); }
 
@@ -813,6 +814,7 @@
     body.dark .mrow-crypto td   { background: #1a1629; }
     body.dark .mrow-tech td     { background: #1e1e12; }
     body.dark .mrow-watchlist td{ background: #141620; }
+    body.dark .mrow-watch td    { background: #0a1f22; }
     body.dark .market-table-scroll { border-color: #3949ab; }
     body.dark .market-footer    { color: #555; }
     body.dark .modal-box        { background: #1a1d27; }
@@ -981,6 +983,7 @@
         <option value="מדדים ותעודות סל">מדדים ותעודות סל</option>
         <option value="מטבעות">מטבעות</option>
         <option value="אגחים">אגחים</option>
+        <option value="מעקב">מעקב</option>
       </select>
     </div>
 
@@ -1037,30 +1040,34 @@ const CONFIG = {
   YAHOO_CHART: 'https://query2.finance.yahoo.com/v8/finance/chart/',
   STORAGE_KEY:    'maakavStocks_watchlist',
   REFRESH_MS:     60000,
-  CATEGORIES:     ['מניות', 'מדדים ותעודות סל', 'מטבעות', 'אגחים'],
+  CATEGORIES:     ['מניות', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב'],
   CAT_CLASS: {
     'מניות':             'cat-stocks',
     'מדדים ותעודות סל':  'cat-indices',
     'מטבעות':            'cat-currencies',
     'אגחים':             'cat-bonds',
+    'מעקב':              'cat-watch',
   },
   CAT_COLOR: {
     'מניות':             '#ef5350',
     'מדדים ותעודות סל':  '#1976d2',
     'מטבעות':            '#2e7d32',
     'אגחים':             '#7b1fa2',
+    'מעקב':              '#00838f',
   },
   CAT_SHORT: {
     'מניות':             'מניות',
     'מדדים ותעודות סל':  'מדד/סל',
     'מטבעות':            'מטבע',
     'אגחים':             'אגח',
+    'מעקב':              'מעקב',
   },
   CAT_ICON: {
     'מניות':             '🏢',
     'מדדים ותעודות סל':  '📊',
     'מטבעות':            '💱',
     'אגחים':             '📄',
+    'מעקב':              '👁️',
   },
 };
 
@@ -1075,7 +1082,7 @@ const STATE = {
   refreshTimer:  null,
   countdownTimer: null,
   isLoading:  false,
-  activeFilters: ['מניות', 'מדדים ותעודות סל', 'מטבעות', 'אגחים'],
+  activeFilters: ['מניות', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב'],
   lastMarketQuotes: [],
   marketPrevClose: {},  // { symbol: Dec31close } — fetched once per session for YTD calc
   sort: { col: null, dir: 'asc' },
@@ -1364,7 +1371,7 @@ function getAllAssets() {
       preChange: d.preMarketChange ?? null,
       time: null,
       ytd: STATE.ytdCache[item.symbol] ?? null,
-      group: 'watchlist',
+      group: item.category === 'מעקב' ? 'watch' : 'watchlist',
       isWatchlist: true,
     });
   });
