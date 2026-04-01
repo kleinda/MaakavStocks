@@ -529,6 +529,7 @@
 
     /* ── שם מניה מתחת לסמל (מוסתר בדסקטופ) ─────────────────── */
     .col-name-sub { display: none; font-size: 0.68em; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; margin-top: 2px; }
+    .ytd-label    { display: none; font-size: 0.75em; color: #888; font-weight: 500; }
     .cat-short    { display: none; }
     .col-break    { display: none; }
 
@@ -585,6 +586,7 @@
       .col-name-sub { display: block; }
       .cat-full  { display: none; }
       .cat-short { display: inline; }
+      .ytd-label { display: inline; }
     }
 
     /* ── Market Panel ────────────────────────────────────────── */
@@ -819,7 +821,6 @@
 <!-- ── Controls Row ─────────────────────────────────────────── -->
 <div class="controls-row">
   <div class="filter-bar" id="filter-bar"></div>
-  <div class="summary-bar" id="summary-bar"></div>
 </div>
 
 <!-- ── Market Panel ──────────────────────────────────────────── -->
@@ -1207,32 +1208,6 @@ function getAllAssets() {
   return assets;
 }
 
-function renderSummaryBar() {
-  const el = document.getElementById('summary-bar');
-  if (!el) return;
-  const assets = getAllAssets().filter(a => {
-    const af = STATE.activeFilters;
-    return af.length === 0 || af.includes(a.category);
-  });
-
-  function avg(arr) {
-    const vals = arr.filter(v => v != null && isFinite(v));
-    return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
-  }
-
-  const avgChange = avg(assets.map(a => a.change));
-  const avgYtd    = avg(assets.map(a => a.ytd));
-  const avgPre    = avg(assets.filter(a => a.preChange != null).map(a => a.preChange));
-
-  function fmt(val, label) {
-    if (val == null) return `<span class="summary-item"><span class="sum-label">${label}</span><span class="sum-val neutral">—</span></span>`;
-    const cls = val >= 0 ? 'up' : 'down';
-    const sign = val >= 0 ? '+' : '';
-    return `<span class="summary-item"><span class="sum-label">${label}</span><span class="sum-val ${cls}">${sign}${val.toFixed(2)}%</span></span>`;
-  }
-
-  el.innerHTML = fmt(avgChange, '% יומי') + fmt(avgYtd, 'YTD') + fmt(avgPre, 'טרום');
-}
 
 function renderUnifiedTable() {
   const tbody = document.getElementById('market-tbody');
@@ -1273,7 +1248,7 @@ function renderUnifiedTable() {
       <td class="col-break"></td>
       <td class="col-change ${change.cls}">${change.text}</td>
       <td class="col-pre ${pre.cls}">${pre.text}</td>
-      <td class="col-ytd ${ytdCls}">${ytdTxt}</td>
+      <td class="col-ytd ${ytdCls}"><span class="ytd-label">YTD </span>${ytdTxt}</td>
       <td class="col-btn">${removeBtn}</td>
     `;
     tbody.appendChild(tr);
@@ -1285,7 +1260,6 @@ function renderUnifiedTable() {
 
   const el = document.getElementById('market-updated');
   if (el) el.textContent = new Date().toLocaleTimeString('he-IL');
-  renderSummaryBar();
 }
 
 /* Keep renderAll as alias so existing call sites work */
