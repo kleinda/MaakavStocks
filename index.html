@@ -891,7 +891,24 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
 <script>
+/* ══════════════════════════════════════════════════════════════
+   FIREBASE
+══════════════════════════════════════════════════════════════ */
+firebase.initializeApp({
+  apiKey:            "AIzaSyCHgj10HiXk3s4WHoT_Qu85hWo6CM9nz8I",
+  authDomain:        "stockprofitproject.firebaseapp.com",
+  projectId:         "stockprofitproject",
+  storageBucket:     "stockprofitproject.firebasestorage.app",
+  messagingSenderId: "104744304435",
+  appId:             "1:104744304435:web:9ff85cf11baeaa23dd4846"
+});
+const db           = firebase.firestore();
+const watchlistCol = db.collection('watchlist');
+
 /* ══════════════════════════════════════════════════════════════
    CONFIG
 ══════════════════════════════════════════════════════════════ */
@@ -951,21 +968,58 @@ const STATE = {
 /* ══════════════════════════════════════════════════════════════
    STORAGE
 ══════════════════════════════════════════════════════════════ */
-function loadWatchlist() {
+function loadWatchlist() { /* replaced by Firestore onSnapshot */ }
+function saveWatchlist() { /* replaced by Firestore operations */ }
+
+async function addItemToFirestore(item) {
+  await watchlistCol.doc(item.id).set(item);
+}
+
+async function removeItemFromFirestore(id) {
+  await watchlistCol.doc(id).delete();
+}
+
+// Migrate existing localStorage data to Firestore (runs once)
+async function migrateFromLocalStorage() {
+  const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
+  if (!raw) return;
   try {
-    const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
-    STATE.watchlist = raw ? JSON.parse(raw) : [];
+    const items = JSON.parse(raw);
+    if (!items || items.length === 0) return;
+    const snap = await watchlistCol.limit(1).get();
+    if (!snap.empty) return; // Firestore already has data
+    const batch = db.batch();
+    items.forEach(item => {
+      const id = item.id || genId();
+      batch.set(watchlistCol.doc(id), { ...item, id });
+    });
+    await batch.commit();
+    localStorage.removeItem(CONFIG.STORAGE_KEY);
+    console.log(`Migrated ${items.length} items to Firestore`);
   } catch (e) {
-    STATE.watchlist = [];
+    console.warn('Migration skipped:', e.message);
   }
 }
 
-function saveWatchlist() {
-  try {
-    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(STATE.watchlist));
-  } catch (e) {
-    showError('שגיאה בשמירה לדפדפן (localStorage מלא?)');
-  }
+function initFirestoreListener() {
+  watchlistCol.onSnapshot(snapshot => {
+    const prevSymbols = new Set(STATE.watchlist.map(i => i.symbol));
+    STATE.watchlist = [];
+    snapshot.forEach(d => STATE.watchlist.push(d.data()));
+    STATE.watchlist.sort((a, b) => new Date(a.addedAt) - new Date(b.addedAt));
+
+    renderUnifiedTable();
+
+    // Fetch data for symbols newly added from another device
+    const newSymbols = STATE.watchlist
+      .filter(i => !prevSymbols.has(i.symbol) && !STATE.marketData[i.symbol])
+      .map(i => i.symbol);
+    if (newSymbols.length > 0) {
+      fetchAllSymbols(newSymbols).then(data => {
+        if (data.length > 0) { updateMarketData(data); renderUnifiedTable(); }
+      });
+    }
+  }, err => showError('Firebase: ' + err.message));
 }
 
 function genId() {
@@ -1499,12 +1553,10 @@ async function handleSave() {
   }
 
   const newItem = { id: genId(), symbol, category, addedAt: new Date().toISOString() };
-  STATE.watchlist.push(newItem);
-  saveWatchlist();
   closeModal();
+  await addItemToFirestore(newItem); // onSnapshot will update STATE.watchlist
 
-  // Fetch data for new symbol immediately (YTD + pre-market in parallel)
-  renderUnifiedTable();
+  // Fetch data for new symbol immediately
   try {
     const [data, preData] = await Promise.all([
       fetchSymbolData(symbol),
@@ -1527,11 +1579,10 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
   const symbol = btn.dataset.symbol;
   if (!symbol) return;
   if (!confirm(`הסר את ${symbol} מהרשימה?`)) return;
-  STATE.watchlist = STATE.watchlist.filter(i => i.symbol !== symbol);
+  const item = STATE.watchlist.find(i => i.symbol === symbol);
+  if (item) removeItemFromFirestore(item.id); // onSnapshot updates STATE.watchlist
   delete STATE.marketData[symbol];
   delete STATE.ytdCache[symbol];
-  saveWatchlist();
-  renderUnifiedTable();
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -1702,21 +1753,10 @@ function renderFilterBar() {
    INIT
 ══════════════════════════════════════════════════════════════ */
 async function init() {
-  loadWatchlist();
+  await migrateFromLocalStorage(); // one-time localStorage→Firestore migration
+  initFirestoreListener();         // real-time sync + data fetch handled inside listener
   renderFilterBar();
-  renderUnifiedTable(); // immediate render (market symbols load shortly)
-
-  // Fetch watchlist symbols in parallel with market data
-  if (STATE.watchlist.length > 0) {
-    const symbols = STATE.watchlist.map(i => i.symbol);
-    const data = await fetchAllSymbols(symbols);
-    if (data.length > 0) {
-      updateMarketData(data);
-      renderUnifiedTable();
-    } else {
-      showError('שגיאת רשת — לא ניתן לטעון נתונים. לחץ "רענן" לנסות שוב.');
-    }
-  }
+  renderUnifiedTable();
   updateTimestamp();
   refreshMarket();
   startAutoRefresh();
