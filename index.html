@@ -510,6 +510,19 @@
       .stocks-grid { grid-template-columns: 1fr; }
     }
 
+    /* ── שם מניה מתחת לסמל (מוסתר בדסקטופ) ─────────────────── */
+    .col-name-sub { display: none; font-size: 0.68em; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; margin-top: 2px; }
+    .cat-short    { display: none; }
+
+    @media (max-width: 768px) {
+      .col-time, .col-name { display: none; }
+      .col-name-sub { display: block; }
+      .cat-full  { display: none; }
+      .cat-short { display: inline; }
+      .market-table th:nth-child(1),
+      .market-table th:nth-child(3) { display: none; }
+    }
+
     /* ── Market Panel ────────────────────────────────────────── */
     .panel-market {
       max-width: 1400px;
@@ -702,6 +715,8 @@
   <div class="toolbar-actions">
     <button class="btn-toolbar" id="btn-manual-refresh" title="רענן עכשיו">&#8635; רענן</button>
     <button class="btn-toolbar" id="btn-export-csv" title="ייצוא watchlist ל-CSV (גיבוי)">📥 גיבוי</button>
+    <button class="btn-toolbar" id="btn-import-csv" title="שחזור watchlist מקובץ CSV">📤 שחזור</button>
+    <input type="file" id="input-csv-file" accept=".csv" style="display:none">
     <button class="btn-toolbar btn-add" id="btn-open-modal">+ הוסף נייר ערך</button>
   </div>
 </header>
@@ -802,6 +817,12 @@ const CONFIG = {
     'מדדים ותעודות סל':  '#1976d2',
     'מטבעות':            '#2e7d32',
     'אגחים':             '#7b1fa2',
+  },
+  CAT_SHORT: {
+    'מניות':             'מניות',
+    'מדדים ותעודות סל':  'מדד/סל',
+    'מטבעות':            'מטבע',
+    'אגחים':             'אגח',
   },
   CAT_ICON: {
     'מניות':             '🏢',
@@ -1108,13 +1129,17 @@ function renderUnifiedTable() {
       ? `<button class="btn-remove-row" data-symbol="${escHtml(asset.symbol)}" title="הסר">✕</button>`
       : '';
 
+    const catShort = CONFIG.CAT_SHORT[asset.category] || asset.category;
     const tr = document.createElement('tr');
     tr.className = `mrow mrow-${asset.group}`;
     tr.innerHTML = `
       <td class="col-time">${timeTxt}</td>
-      <td class="col-symbol">${escHtml(asset.symbol)}</td>
+      <td class="col-symbol">
+        <div>${escHtml(asset.symbol)}</div>
+        <div class="col-name-sub">${escHtml(asset.name)}</div>
+      </td>
       <td class="col-name">${escHtml(asset.name)}</td>
-      <td><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55">${escHtml(asset.category || '')}</span></td>
+      <td><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55"><span class="cat-full">${escHtml(asset.category || '')}</span><span class="cat-short">${escHtml(catShort)}</span></span></td>
       <td class="col-price">${fmtMarketPrice(asset.price, asset.symbol)}</td>
       <td class="col-change ${change.cls}">${change.text}</td>
       <td class="col-ytd ${ytdCls}">${ytdTxt}</td>
@@ -1449,6 +1474,73 @@ function exportCSV() {
 }
 
 document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+
+function importCSV() {
+  document.getElementById('input-csv-file').click();
+}
+
+document.getElementById('btn-import-csv').addEventListener('click', importCSV);
+
+document.getElementById('input-csv-file').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      // Remove BOM if present
+      let text = ev.target.result.replace(/^\uFEFF/, '');
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { alert('הקובץ ריק או פגום.'); return; }
+
+      // Parse CSV (handles quoted fields)
+      function parseLine(line) {
+        const cols = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+            else inQ = !inQ;
+          } else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+          else cur += ch;
+        }
+        cols.push(cur);
+        return cols;
+      }
+
+      const header = parseLine(lines[0]).map(h => h.toLowerCase().trim());
+      const iSym = header.indexOf('symbol');
+      const iCat = header.indexOf('category');
+      const iAdd = header.indexOf('addedat');
+      if (iSym === -1 || iCat === -1) { alert('קובץ לא תקין — חסרות עמודות symbol/category.'); return; }
+
+      let added = 0, skipped = 0;
+      const existingSymbols = new Set(STATE.watchlist.map(i => i.symbol));
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseLine(lines[i]);
+        const symbol = (cols[iSym] || '').trim().toUpperCase();
+        const category = (cols[iCat] || '').trim();
+        const addedAt = iAdd >= 0 ? (cols[iAdd] || '') : '';
+        if (!symbol || !category) continue;
+        if (existingSymbols.has(symbol)) { skipped++; continue; }
+        STATE.watchlist.push({ id: genId(), symbol, category, addedAt: addedAt || new Date().toISOString() });
+        existingSymbols.add(symbol);
+        added++;
+      }
+
+      saveWatchlist();
+      renderUnifiedTable();
+      fetchAllSymbols();
+      alert(`שחזור הושלם:\nנוספו: ${added}\nכבר קיימים: ${skipped}`);
+    } catch(err) {
+      alert('שגיאה בקריאת הקובץ: ' + err.message);
+    }
+    // Reset so same file can be re-imported if needed
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+});
 
 /* ══════════════════════════════════════════════════════════════
    MARKET PANEL
