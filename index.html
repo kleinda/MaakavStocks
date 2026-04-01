@@ -529,7 +529,7 @@
 
     /* ── שם מניה מתחת לסמל (מוסתר בדסקטופ) ─────────────────── */
     .col-name-sub { display: none; font-size: 0.68em; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; margin-top: 2px; }
-    .ytd-label    { display: none; font-size: 0.75em; color: #888; font-weight: 500; }
+    .ytd-label, .pre-label { display: none; font-size: 0.75em; color: #888; font-weight: 500; }
     .cat-short    { display: none; }
     .col-break    { display: none; }
 
@@ -586,7 +586,7 @@
       .col-name-sub { display: block; }
       .cat-full  { display: none; }
       .cat-short { display: inline; }
-      .ytd-label { display: inline; }
+      .ytd-label, .pre-label { display: inline; }
     }
 
     /* ── Market Panel ────────────────────────────────────────── */
@@ -1247,8 +1247,8 @@ function renderUnifiedTable() {
       <td class="col-price">${fmtMarketPrice(asset.price, asset.symbol)}</td>
       <td class="col-break"></td>
       <td class="col-change ${change.cls}">${change.text}</td>
-      <td class="col-pre ${pre.cls}">${pre.text}</td>
-      <td class="col-ytd ${ytdCls}"><span class="ytd-label">YTD </span>${ytdTxt}</td>
+      <td class="col-pre ${pre.cls}"><span class="pre-label">PRE </span>${pre.text}</td>
+      <td class="col-ytd ${ytdCls}"><span class="ytd-label">Y2D </span>${ytdTxt}</td>
       <td class="col-btn">${removeBtn}</td>
     `;
     tbody.appendChild(tr);
