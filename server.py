@@ -8,6 +8,8 @@ import urllib.request
 import urllib.parse
 import json
 import os
+import datetime
+import calendar
 
 PORT = int(os.environ.get('PORT', 3000))
 YAHOO_BASE = 'https://query2.finance.yahoo.com/v8/finance/chart/'
@@ -31,7 +33,7 @@ def fetch_quote(symbol):
     price    = meta.get("regularMarketPrice")
     prev     = meta.get("previousClose") or meta.get("chartPreviousClose")
     reg_time = meta.get("regularMarketTime") or 0
-    change_pct = ((price - prev) / prev * 100) if price and prev else None
+    change_pct = ((price - prev) / prev * 100) if (price and prev) else None
 
     # Pre/after-hours: last valid 1m close AFTER regularMarketTime
     pre_price  = None

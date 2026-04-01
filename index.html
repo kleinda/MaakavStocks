@@ -41,8 +41,11 @@
       font-family: var(--font);
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
       direction: rtl;
+      display: flex;
+      flex-direction: column;
     }
 
     /* ── Toolbar ─────────────────────────────────────────────── */
@@ -537,10 +540,19 @@
       .toolbar-actions { gap: 8px; }
       .btn-toolbar { font-size: 0.78rem; padding: 5px 11px; }
 
-      /* Filter bar */
-      .filter-bar { padding: 0 14px; }
+      /* Controls row */
+      .controls-row { flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+      .summary-bar { gap: 12px; font-size: 0.78rem; }
 
-      /* Table: flex 2-row layout */
+      /* Panel */
+      .panel-market { padding: 0 10px 6px; }
+
+    }
+
+    /* ── פלאפון בלבד: 2-row table layout ──────────────────────── */
+    @media (max-width: 480px) {
+      .panel-market { padding: 0 6px 6px; }
+
       .market-table thead { display: none; }
       .market-table, .market-table tbody { display: block; }
       .market-table tr.mrow {
@@ -565,26 +577,21 @@
       .col-break  { order: 4; display: block !important; flex-basis: 100%; height: 0; }
       /* Row 2 */
       .col-change { order: 5; font-size: 0.82rem; }
-      .col-ytd    { order: 6; font-size: 0.82rem; }
-      .col-pre    { order: 7; font-size: 0.82rem; }
+      .col-pre    { order: 6; font-size: 0.82rem; }
+      .col-ytd    { order: 7; font-size: 0.82rem; }
       .col-btn    { order: 8; margin-right: auto; }
       /* Hidden */
       .col-time, .col-name { display: none !important; }
       .col-name-sub { display: block; }
       .cat-full  { display: none; }
       .cat-short { display: inline; }
-
-      /* Panel height on mobile */
-      .panel-market { height: 70vh; padding: 0 10px; }
     }
 
     /* ── Market Panel ────────────────────────────────────────── */
     .panel-market {
-      max-width: 1400px;
-      margin: 16px auto 0;
-      padding: 0 20px;
-      height: 60vh;
-      min-height: 320px;
+      flex: 1;
+      min-height: 0;
+      padding: 0 20px 8px;
       display: flex;
       flex-direction: column;
     }
@@ -592,6 +599,7 @@
     .market-table-scroll {
       flex: 1;
       overflow-y: auto;
+      overflow-x: auto;
       border: 2px solid #90caf9;
       border-radius: 12px;
     }
@@ -689,15 +697,50 @@
     }
 
     /* ── Filter Bar ──────────────────────────────────────────── */
-    .filter-bar {
-      max-width: 1400px;
-      margin: 14px auto 0;
-      padding: 0 20px;
+    /* ── Controls row (filter + summary) ─────────────────────── */
+    .controls-row {
+      flex-shrink: 0;
       display: flex;
-      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 20px;
+      gap: 12px;
+      border-bottom: 1px solid #e3f2fd;
+      background: #fff;
+    }
+
+    .filter-bar {
+      display: flex;
       gap: 8px;
       align-items: center;
     }
+
+    /* ── Summary bar ─────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-muted);
+    }
+
+    .summary-item .sum-label {
+      color: #666;
+      font-weight: 500;
+    }
+
+    .summary-item .sum-val { font-weight: 700; font-size: 0.88rem; direction: ltr; unicode-bidi: embed; }
+    .summary-item .sum-val.up   { color: var(--up); }
+    .summary-item .sum-val.down { color: var(--down); }
+    .summary-item .sum-val.neutral { color: #888; }
+    .summary-item + .summary-item::before { content: '|'; color: #ccc; margin-left: 4px; }
 
     .filter-label {
       font-size: 0.8rem;
@@ -773,21 +816,27 @@
   </div>
 </header>
 
+<!-- ── Controls Row ─────────────────────────────────────────── -->
+<div class="controls-row">
+  <div class="filter-bar" id="filter-bar"></div>
+  <div class="summary-bar" id="summary-bar"></div>
+</div>
+
 <!-- ── Market Panel ──────────────────────────────────────────── -->
 <section class="panel-market">
   <div class="market-table-scroll">
     <table class="market-table">
       <thead>
         <tr>
-          <th>שעת עדכון</th>
-          <th>סמל</th>
-          <th>נכס</th>
-          <th>קטגוריה</th>
-          <th>שער</th>
+          <th>Time</th>
+          <th>Symbol</th>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Value</th>
           <th class="col-break"></th>
-          <th>% יומי</th>
-          <th>YTD%</th>
-          <th>טרום</th>
+          <th>%day</th>
+          <th>Pre</th>
+          <th>Ytd</th>
           <th></th>
         </tr>
       </thead>
@@ -798,9 +847,6 @@
   </div>
   <div class="market-footer">עודכן: <span id="market-updated">—</span></div>
 </section>
-
-<!-- ── Filter Bar ─────────────────────────────────────────── -->
-<div class="filter-bar" id="filter-bar"></div>
 
 <!-- ── Error Banner ───────────────────────────────────────── -->
 <div id="error-banner-slot" style="max-width:1400px;margin:6px auto 0;padding:0 20px"></div>
@@ -959,27 +1005,30 @@ function parseChartResponse(symbol, data) {
   const timestamps = result.timestamp || [];
   const rawCloses  = result.indicators?.quote?.[0]?.close || [];
 
-  // Daily change: find yesterday's close using timestamps.
-  // With interval=1d&range=ytd, the last bar might be TODAY's bar (close ≈ current price),
-  // causing change ≈ 0. We detect this by comparing the last bar's date to today (UTC).
+  // Daily change logic:
+  // Market OPEN  → (regularMarketPrice - yesterday_close) / yesterday_close
+  // Market CLOSED → (yesterday_close - day_before_close) / day_before_close = yesterday's final change
   const todayStartTs = new Date(new Date().toISOString().slice(0, 10)).getTime() / 1000;
-  let dailyPrevClose = null;
-  let passedToday    = false;
-  for (let i = timestamps.length - 1; i >= 0; i--) {
-    if (rawCloses[i] == null) continue;
-    if (!passedToday) {
-      if (timestamps[i] >= todayStartTs) {
-        passedToday = true; // skip today's bar (its close ≈ regularMarketPrice)
-      } else {
-        dailyPrevClose = rawCloses[i]; // market closed — this IS yesterday
-        break;
-      }
-    } else {
-      dailyPrevClose = rawCloses[i]; // first bar before today = yesterday
-      break;
+  const regTime = meta.regularMarketTime || 0;
+  const priceIsFromToday = regTime >= todayStartTs;
+
+  // Collect last 3 valid bars (most recent first)
+  const recentBars = [];
+  for (let i = timestamps.length - 1; i >= 0 && recentBars.length < 3; i--) {
+    if (rawCloses[i] != null) recentBars.push({ ts: timestamps[i], close: rawCloses[i] });
+  }
+
+  let change = null;
+  if (priceIsFromToday) {
+    // Market open: live price vs yesterday's bar
+    const prevBar = recentBars.find(b => b.ts < todayStartTs);
+    if (prevBar) change = (price - prevBar.close) / prevBar.close * 100;
+  } else {
+    // Market closed: bar[0]=yesterday bar[1]=day-before → yesterday's final change
+    if (recentBars.length >= 2) {
+      change = (recentBars[0].close - recentBars[1].close) / recentBars[1].close * 100;
     }
   }
-  const change = dailyPrevClose ? ((price - dailyPrevClose) / dailyPrevClose * 100) : null;
 
   // YTD: chartPreviousClose = Dec 31 close of previous year
   const ytdBase = meta.chartPreviousClose;
@@ -1158,6 +1207,33 @@ function getAllAssets() {
   return assets;
 }
 
+function renderSummaryBar() {
+  const el = document.getElementById('summary-bar');
+  if (!el) return;
+  const assets = getAllAssets().filter(a => {
+    const af = STATE.activeFilters;
+    return af.length === 0 || af.includes(a.category);
+  });
+
+  function avg(arr) {
+    const vals = arr.filter(v => v != null && isFinite(v));
+    return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
+  }
+
+  const avgChange = avg(assets.map(a => a.change));
+  const avgYtd    = avg(assets.map(a => a.ytd));
+  const avgPre    = avg(assets.filter(a => a.preChange != null).map(a => a.preChange));
+
+  function fmt(val, label) {
+    if (val == null) return `<span class="summary-item"><span class="sum-label">${label}</span><span class="sum-val neutral">—</span></span>`;
+    const cls = val >= 0 ? 'up' : 'down';
+    const sign = val >= 0 ? '+' : '';
+    return `<span class="summary-item"><span class="sum-label">${label}</span><span class="sum-val ${cls}">${sign}${val.toFixed(2)}%</span></span>`;
+  }
+
+  el.innerHTML = fmt(avgChange, '% יומי') + fmt(avgYtd, 'YTD') + fmt(avgPre, 'טרום');
+}
+
 function renderUnifiedTable() {
   const tbody = document.getElementById('market-tbody');
   if (!tbody) return;
@@ -1196,8 +1272,8 @@ function renderUnifiedTable() {
       <td class="col-price">${fmtMarketPrice(asset.price, asset.symbol)}</td>
       <td class="col-break"></td>
       <td class="col-change ${change.cls}">${change.text}</td>
-      <td class="col-ytd ${ytdCls}">${ytdTxt}</td>
       <td class="col-pre ${pre.cls}">${pre.text}</td>
+      <td class="col-ytd ${ytdCls}">${ytdTxt}</td>
       <td class="col-btn">${removeBtn}</td>
     `;
     tbody.appendChild(tr);
@@ -1209,6 +1285,7 @@ function renderUnifiedTable() {
 
   const el = document.getElementById('market-updated');
   if (el) el.textContent = new Date().toLocaleTimeString('he-IL');
+  renderSummaryBar();
 }
 
 /* Keep renderAll as alias so existing call sites work */
