@@ -499,8 +499,6 @@
 
     /* ── Responsive ──────────────────────────────────────────── */
     @media (max-width: 600px) {
-      .toolbar-title { font-size: 1.1rem; }
-      .toolbar-status { display: none; }
       .stocks-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
       main { padding: 16px 12px; }
       .card-price { font-size: 1.2rem; }
@@ -510,17 +508,74 @@
       .stocks-grid { grid-template-columns: 1fr; }
     }
 
+    /* ── Filter select (combobox) ─────────────────────────────── */
+    .filter-select {
+      font-family: var(--font);
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 2px solid #1976d2;
+      background: #fff;
+      color: #1a237e;
+      cursor: pointer;
+      direction: rtl;
+      min-width: 170px;
+    }
+    .filter-select:focus { outline: none; border-color: #4527a0; }
+
     /* ── שם מניה מתחת לסמל (מוסתר בדסקטופ) ─────────────────── */
     .col-name-sub { display: none; font-size: 0.68em; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; margin-top: 2px; }
     .cat-short    { display: none; }
+    .col-break    { display: none; }
 
+    /* ── Mobile ─────────────────────────────────────────────────  */
     @media (max-width: 768px) {
-      .col-time, .col-name { display: none; }
+      /* Toolbar */
+      .toolbar { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+      .toolbar-status { display: none; }
+      .toolbar-actions { gap: 8px; }
+      .btn-toolbar { font-size: 0.78rem; padding: 5px 11px; }
+
+      /* Filter bar */
+      .filter-bar { padding: 0 14px; }
+
+      /* Table: flex 2-row layout */
+      .market-table thead { display: none; }
+      .market-table, .market-table tbody { display: block; }
+      .market-table tr.mrow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 8px 10px;
+        border-bottom: 2px solid #eee;
+        gap: 4px 10px;
+      }
+      .market-table tr.mrow td {
+        display: block;
+        padding: 0;
+        border: none;
+        white-space: nowrap;
+      }
+      /* Row 1 */
+      .col-symbol { order: 1; flex: 1 1 auto; }
+      .col-cat    { order: 2; }
+      .col-price  { order: 3; font-weight: 700; }
+      /* Flex line break */
+      .col-break  { order: 4; display: block !important; flex-basis: 100%; height: 0; }
+      /* Row 2 */
+      .col-change { order: 5; font-size: 0.82rem; }
+      .col-ytd    { order: 6; font-size: 0.82rem; }
+      .col-pre    { order: 7; font-size: 0.82rem; }
+      .col-btn    { order: 8; margin-right: auto; }
+      /* Hidden */
+      .col-time, .col-name { display: none !important; }
       .col-name-sub { display: block; }
       .cat-full  { display: none; }
       .cat-short { display: inline; }
-      .market-table th:nth-child(1),
-      .market-table th:nth-child(3) { display: none; }
+
+      /* Panel height on mobile */
+      .panel-market { height: 70vh; padding: 0 10px; }
     }
 
     /* ── Market Panel ────────────────────────────────────────── */
@@ -714,9 +769,6 @@
 
   <div class="toolbar-actions">
     <button class="btn-toolbar" id="btn-manual-refresh" title="רענן עכשיו">&#8635; רענן</button>
-    <button class="btn-toolbar" id="btn-export-csv" title="ייצוא watchlist ל-CSV (גיבוי)">📥 גיבוי</button>
-    <button class="btn-toolbar" id="btn-import-csv" title="שחזור watchlist מקובץ CSV">📤 שחזור</button>
-    <input type="file" id="input-csv-file" accept=".csv" style="display:none">
     <button class="btn-toolbar btn-add" id="btn-open-modal">+ הוסף נייר ערך</button>
   </div>
 </header>
@@ -732,6 +784,7 @@
           <th>נכס</th>
           <th>קטגוריה</th>
           <th>שער</th>
+          <th class="col-break"></th>
           <th>% יומי</th>
           <th>YTD%</th>
           <th>טרום</th>
@@ -739,7 +792,7 @@
         </tr>
       </thead>
       <tbody id="market-tbody">
-        <tr><td colspan="9" style="text-align:center;padding:20px;color:#aaa">טוען נתוני שוק...</td></tr>
+        <tr><td colspan="10" style="text-align:center;padding:20px;color:#aaa">טוען נתוני שוק...</td></tr>
       </tbody>
     </table>
   </div>
@@ -1139,8 +1192,9 @@ function renderUnifiedTable() {
         <div class="col-name-sub">${escHtml(asset.name)}</div>
       </td>
       <td class="col-name">${escHtml(asset.name)}</td>
-      <td><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55"><span class="cat-full">${escHtml(asset.category || '')}</span><span class="cat-short">${escHtml(catShort)}</span></span></td>
+      <td class="col-cat"><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55"><span class="cat-full">${escHtml(asset.category || '')}</span><span class="cat-short">${escHtml(catShort)}</span></span></td>
       <td class="col-price">${fmtMarketPrice(asset.price, asset.symbol)}</td>
+      <td class="col-break"></td>
       <td class="col-change ${change.cls}">${change.text}</td>
       <td class="col-ytd ${ytdCls}">${ytdTxt}</td>
       <td class="col-pre ${pre.cls}">${pre.text}</td>
@@ -1150,7 +1204,7 @@ function renderUnifiedTable() {
   });
 
   if (count === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:#aaa">אין נכסים בקטגוריה הנבחרת</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:20px;color:#aaa">אין נכסים בקטגוריה הנבחרת</td></tr>`;
   }
 
   const el = document.getElementById('market-updated');
@@ -1645,7 +1699,7 @@ async function refreshMarket() {
   } catch (e) {
     const tbody = document.getElementById('market-tbody');
     if (tbody && STATE.lastMarketQuotes.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:14px;color:#e53935;font-size:0.85rem">
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:14px;color:#e53935;font-size:0.85rem">
         ⚠️ שגיאה בטעינת נתוני שוק — הפעל מחדש את start.bat<br>
         <small style="color:#999">${e.message}</small>
       </td></tr>`;
@@ -1663,46 +1717,33 @@ function renderFilterBar() {
 
   const label = document.createElement('span');
   label.className = 'filter-label';
-  label.textContent = '🔽 סינון:';
+  label.textContent = 'סינון:';
   bar.appendChild(label);
 
+  const sel = document.createElement('select');
+  sel.className = 'filter-select';
+
   const allActive = CONFIG.CATEGORIES.every(c => STATE.activeFilters.includes(c));
-  const allBtn = document.createElement('button');
-  allBtn.className = `filter-chip filter-chip-all${allActive ? ' all-active' : ''}`;
-  allBtn.textContent = 'הכל';
-  allBtn.title = allActive ? 'בטל בחירת הכל' : 'הצג הכל';
-  allBtn.addEventListener('click', () => {
-    STATE.activeFilters = [...CONFIG.CATEGORIES];
-    renderFilterBar();
-    renderUnifiedTable();
-  });
-  bar.appendChild(allBtn);
+  const optAll = document.createElement('option');
+  optAll.value = '__all__';
+  optAll.textContent = '📋 הכל';
+  if (allActive) optAll.selected = true;
+  sel.appendChild(optAll);
 
   CONFIG.CATEGORIES.forEach(cat => {
-    const active = STATE.activeFilters.includes(cat);
-    const color  = CONFIG.CAT_COLOR[cat];
-    const btn = document.createElement('button');
-    btn.className = 'filter-chip';
-    // Always show category color: bright when active, muted when inactive
-    if (active) {
-      btn.style.cssText = `background:${color};color:#fff;border-color:${color};box-shadow:0 2px 8px ${color}55`;
-    } else {
-      btn.style.cssText = `background:${color}18;color:${color};border-color:${color}55`;
-    }
-    btn.textContent = CONFIG.CAT_ICON[cat] + ' ' + cat;
-    btn.title = `הצג רק ${cat}`;
-    btn.addEventListener('click', () => {
-      // Single-click = show only this category (toggle back to all if already exclusive)
-      if (STATE.activeFilters.length === 1 && STATE.activeFilters[0] === cat) {
-        STATE.activeFilters = [...CONFIG.CATEGORIES];
-      } else {
-        STATE.activeFilters = [cat];
-      }
-      renderFilterBar();
-      renderUnifiedTable();
-    });
-    bar.appendChild(btn);
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = CONFIG.CAT_ICON[cat] + ' ' + cat;
+    if (!allActive && STATE.activeFilters.includes(cat)) opt.selected = true;
+    sel.appendChild(opt);
   });
+
+  sel.addEventListener('change', () => {
+    STATE.activeFilters = sel.value === '__all__' ? [...CONFIG.CATEGORIES] : [sel.value];
+    renderUnifiedTable();
+  });
+
+  bar.appendChild(sel);
 }
 
 /* ══════════════════════════════════════════════════════════════
