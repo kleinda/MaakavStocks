@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MaakavStocks | מעקב מניות</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Variables ───────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font: 'Heebo', 'Arial Hebrew', sans-serif;
+      --bg: #f0f2f5;
+      --card-bg: #ffffff;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+      --shadow-hover: 0 6px 24px rgba(0,0,0,0.14);
+      --radius: 14px;
+      --radius-sm: 8px;
+      --transition: 0.2s ease;
+
+      /* Category colors */
+      --stocks:  #ef5350;
+      --indices: #1976d2;
+      --currencies: #2e7d32;
+      --bonds: #7b1fa2;
+
+      /* Price colors */
+      --up: #1b8a3c;
+      --up-bg: #e8f5e9;
+      --down: #c62828;
+      --down-bg: #ffebee;
+      --neutral: #555;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      direction: rtl;
+    }
+
+    /* ── Toolbar ─────────────────────────────────────────────── */
+    .toolbar {
+      background: linear-gradient(135deg, #1a237e 0%, #283593 40%, #4527a0 100%);
+      color: #fff;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 3px 16px rgba(26,35,126,0.35);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .toolbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toolbar-logo {
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .toolbar-title {
+      font-size: 1.3rem;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+    }
+
+    .toolbar-subtitle {
+      font-size: 0.7rem;
+      opacity: 0.75;
+      margin-top: 1px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toolbar-status {
+      text-align: center;
+      font-size: 0.75rem;
+      opacity: 0.85;
+      line-height: 1.5;
+    }
+
+    .countdown-bar {
+      width: 90px;
+      height: 4px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 2px;
+      margin-top: 3px;
+      overflow: hidden;
+    }
+
+    .countdown-fill {
+      height: 100%;
+      background: #80cbc4;
+      border-radius: 2px;
+      transition: width 1s linear;
+    }
+
+    .btn-toolbar {
+      background: rgba(255,255,255,0.18);
+      border: 1.5px solid rgba(255,255,255,0.45);
+      color: #fff;
+      font-family: var(--font);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 7px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+
+    .btn-toolbar:hover {
+      background: rgba(255,255,255,0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn-add {
+      background: #00c853;
+      border-color: #00c853;
+      color: #fff;
+    }
+
+    .btn-add:hover { background: #00b248; }
+
+    /* ── Main Content ────────────────────────────────────────── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px;
+    }
+
+    /* ── Empty State ─────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state .empty-icon { font-size: 4rem; margin-bottom: 16px; }
+    .empty-state h2 { font-size: 1.4rem; margin-bottom: 8px; color: var(--text); }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* ── Category Section ────────────────────────────────────── */
+    .category-section {
+      margin-bottom: 32px;
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .category-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .category-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .category-count {
+      background: rgba(0,0,0,0.07);
+      border-radius: 10px;
+      padding: 2px 9px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* ── Stocks Grid ─────────────────────────────────────────── */
+    .stocks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Stock Card ──────────────────────────────────────────── */
+    .stock-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px 16px 14px;
+      border-right: 5px solid transparent;
+      position: relative;
+      transition: box-shadow var(--transition), transform var(--transition);
+      overflow: hidden;
+    }
+
+    .stock-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    .stock-card.cat-stocks   { border-right-color: var(--stocks); }
+    .stock-card.cat-indices  { border-right-color: var(--indices); }
+    .stock-card.cat-currencies { border-right-color: var(--currencies); }
+    .stock-card.cat-bonds    { border-right-color: var(--bonds); }
+
+    /* Flash animation on price update */
+    @keyframes flash-up   { 0%,100%{background:transparent} 30%{background:#c8f5d7} }
+    @keyframes flash-down { 0%,100%{background:transparent} 30%{background:#ffd6d6} }
+    .stock-card.flash-up   { animation: flash-up 0.9s ease; }
+    .stock-card.flash-down { animation: flash-down 0.9s ease; }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .card-symbol {
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing: 0.5px;
+    }
+
+    .card-name {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      line-height: 1.3;
+      max-width: 140px;
+    }
+
+    .btn-remove {
+      background: none;
+      border: none;
+      color: #bbb;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color var(--transition);
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .btn-remove:hover { color: #e53935; }
+
+    .card-price {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+      direction: ltr;
+      text-align: right;
+    }
+
+    .card-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      direction: ltr;
+    }
+
+    .badge-up   { background: var(--up-bg);   color: var(--up); }
+    .badge-down { background: var(--down-bg);  color: var(--down); }
+    .badge-neutral { background: #f0f0f0; color: var(--neutral); }
+
+    .badge-label {
+      font-size: 0.68rem;
+      font-weight: 500;
+      opacity: 0.75;
+      direction: rtl;
+    }
+
+    .card-premarket {
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: #fff8e1;
+      border-radius: var(--radius-sm);
+      border: 1px solid #ffe082;
+      font-size: 0.78rem;
+      color: #5d4037;
+      direction: ltr;
+      text-align: right;
+    }
+
+    .card-premarket-label {
+      font-size: 0.7rem;
+      color: #8d6e63;
+      direction: rtl;
+      margin-bottom: 2px;
+    }
+
+    .card-loading {
+      text-align: center;
+      padding: 20px 0;
+      color: #bbb;
+      font-size: 0.85rem;
+    }
+
+    /* ── Error Banner ────────────────────────────────────────── */
+    .error-banner {
+      background: #ffebee;
+      border: 1px solid #ef9a9a;
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      color: #c62828;
+      font-size: 0.88rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .error-banner button {
+      background: #c62828;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-family: var(--font);
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    /* ── Modal ───────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+      backdrop-filter: blur(3px);
+    }
+
+    .modal-overlay.hidden { display: none; }
+
+    .modal-box {
+      background: #fff;
+      border-radius: 20px;
+      padding: 28px 28px 24px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+      animation: modalIn 0.25s ease;
+    }
+
+    @keyframes modalIn {
+      from { transform: scale(0.92) translateY(20px); opacity: 0; }
+      to   { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .modal-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 11px 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 1rem;
+      color: var(--text);
+      transition: border-color var(--transition);
+      background: #fafafa;
+      direction: ltr;
+      text-align: right;
+    }
+
+    select.form-control { direction: rtl; text-align: right; }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #5c6bc0;
+      background: #fff;
+    }
+
+    .validation-msg {
+      margin-top: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.83rem;
+      font-weight: 500;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .validation-msg.checking { background: #e3f2fd; color: #1565c0; }
+    .validation-msg.valid    { background: #e8f5e9; color: #1b5e20; }
+    .validation-msg.invalid  { background: #ffebee; color: #b71c1c; }
+    .validation-msg.empty    { background: transparent; }
+
+    .modal-hint {
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 5px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .btn-save {
+      flex: 1;
+      background: linear-gradient(135deg, #3949ab, #5c6bc0);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-save:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(57,73,171,0.4); }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-cancel {
+      background: #f0f0f0;
+      color: var(--text-muted);
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-family: var(--font);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-cancel:hover { background: #e0e0e0; }
+
+    /* ── Spinner ─────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(21,101,192,0.3);
+      border-top-color: #1565c0;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .toolbar-title { font-size: 1.1rem; }
+      .toolbar-status { display: none; }
+      .stocks-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      main { padding: 16px 12px; }
+      .card-price { font-size: 1.2rem; }
+    }
+
+    @media (max-width: 400px) {
+      .stocks-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Market Panel ────────────────────────────────────────── */
+    .panel-market {
+      max-width: 1400px;
+      margin: 16px auto 0;
+      padding: 0 20px;
+      height: 60vh;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .market-table-scroll {
+      flex: 1;
+      overflow-y: auto;
+      border: 2px solid #90caf9;
+      border-radius: 12px;
+    }
+
+    .market-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      direction: rtl;
+    }
+
+    .market-table thead tr {
+      background: #e3f2fd;
+    }
+
+    .market-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .market-table th {
+      padding: 10px 14px;
+      font-weight: 700;
+      color: #1a237e;
+      text-align: right;
+      white-space: nowrap;
+      background: #e3f2fd;
+    }
+
+    .market-table th:last-child { text-align: center; width: 40px; }
+
+    .market-table td {
+      padding: 9px 14px;
+      border-top: 1px solid #e0e0e0;
+      white-space: nowrap;
+    }
+
+    /* Row group colors */
+    .mrow-us        td { background: #fff5f7; }
+    .mrow-il        td { background: #f1f8e9; }
+    .mrow-crypto    td { background: #ede7f6; }
+    .mrow-tech      td { background: #fffde7; }
+    .mrow-watchlist td { background: #fafafa; }
+
+    .market-table tr:hover td { filter: brightness(0.96); }
+
+    /* Column alignment */
+    .col-price, .col-change, .col-pre, .col-ytd { direction: ltr; text-align: right; }
+    .col-time   { color: var(--text-muted); font-size: 0.82rem; }
+    .col-name   { font-weight: 600; }
+    .col-symbol { font-weight: 700; direction: ltr; text-align: right; }
+
+    /* Align numeric headers to match right-aligned content */
+    .market-table th:nth-child(5),
+    .market-table th:nth-child(6),
+    .market-table th:nth-child(7),
+    .market-table th:nth-child(8) { text-align: right; }
+
+    /* Colors */
+    .col-change.up,  .col-pre.up,  .col-ytd.up   { color: var(--up);   font-weight: 600; }
+    .col-change.down,.col-pre.down,.col-ytd.down  { color: var(--down); font-weight: 600; }
+    .col-change.neutral,.col-pre.neutral,.col-ytd.neutral { color: var(--text-muted); }
+
+    /* Remove row button */
+    .btn-remove-row {
+      background: none;
+      border: none;
+      color: #ccc;
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color var(--transition);
+    }
+    .btn-remove-row:hover { color: #e53935; }
+    .col-btn { text-align: center; }
+
+    .market-cat-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.73rem;
+      font-weight: 600;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+
+    .market-footer {
+      text-align: left;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      padding: 0 2px;
+    }
+
+    /* ── Filter Bar ──────────────────────────────────────────── */
+    .filter-bar {
+      max-width: 1400px;
+      margin: 14px auto 0;
+      padding: 0 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-left: 4px;
+    }
+
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-family: var(--font);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid #ddd;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      background: #f0f0f0;
+      color: #888;
+    }
+
+    .filter-chip:hover {
+      filter: brightness(0.95);
+      transform: translateY(-1px);
+    }
+
+    .filter-chip.active {
+      background: var(--chip-color, #666);
+      color: #fff;
+      border-color: var(--chip-color, #666);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .filter-chip-all {
+      background: #f0f0f0;
+      color: #555;
+      border-color: #ccc;
+    }
+
+    .filter-chip-all.all-active {
+      background: #37474f;
+      color: #fff;
+      border-color: #37474f;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Toolbar ───────────────────────────────────────────────── -->
+<header class="toolbar">
+  <div class="toolbar-brand">
+    <span class="toolbar-logo">📈</span>
+    <div>
+      <div class="toolbar-title">MaakavStocks</div>
+      <div class="toolbar-subtitle">מעקב ניירות ערך</div>
+    </div>
+  </div>
+
+  <div class="toolbar-status" id="toolbar-status">
+    <div id="refresh-time">טוען...</div>
+    <div class="countdown-bar">
+      <div class="countdown-fill" id="countdown-fill" style="width:100%"></div>
+    </div>
+  </div>
+
+  <div class="toolbar-actions">
+    <button class="btn-toolbar" id="btn-manual-refresh" title="רענן עכשיו">&#8635; רענן</button>
+    <button class="btn-toolbar" id="btn-export-csv" title="ייצוא watchlist ל-CSV (גיבוי)">📥 גיבוי</button>
+    <button class="btn-toolbar btn-add" id="btn-open-modal">+ הוסף נייר ערך</button>
+  </div>
+</header>
+
+<!-- ── Market Panel ──────────────────────────────────────────── -->
+<section class="panel-market">
+  <div class="market-table-scroll">
+    <table class="market-table">
+      <thead>
+        <tr>
+          <th>שעת עדכון</th>
+          <th>סמל</th>
+          <th>נכס</th>
+          <th>קטגוריה</th>
+          <th>שער</th>
+          <th>% יומי</th>
+          <th>YTD%</th>
+          <th>טרום</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="market-tbody">
+        <tr><td colspan="9" style="text-align:center;padding:20px;color:#aaa">טוען נתוני שוק...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="market-footer">עודכן: <span id="market-updated">—</span></div>
+</section>
+
+<!-- ── Filter Bar ─────────────────────────────────────────── -->
+<div class="filter-bar" id="filter-bar"></div>
+
+<!-- ── Error Banner ───────────────────────────────────────── -->
+<div id="error-banner-slot" style="max-width:1400px;margin:6px auto 0;padding:0 20px"></div>
+
+<!-- ── Main (placeholder for future management) ──────────── -->
+<main id="app" style="display:none"></main>
+
+<!-- ── Add Stock Modal ───────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-title">➕ הוסף נייר ערך</div>
+
+    <div class="form-group">
+      <label class="form-label" for="input-category">קטגוריה</label>
+      <select class="form-control" id="input-category">
+        <option value="מניות">מניות</option>
+        <option value="מדדים ותעודות סל">מדדים ותעודות סל</option>
+        <option value="מטבעות">מטבעות</option>
+        <option value="אגחים">אגחים</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="input-symbol">סמל (Symbol)</label>
+      <input
+        class="form-control"
+        id="input-symbol"
+        type="text"
+        placeholder="לדוג': AAPL, ^GSPC, USDILS=X, TLT"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <div class="modal-hint">מדדים: ^GSPC, ^TA125.TA | מט"ח: USDILS=X, EURUSD=X</div>
+      <div class="validation-msg empty" id="validation-msg"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-save" id="btn-save" disabled>שמור</button>
+      <button class="btn-cancel" id="btn-cancel">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════════════════════ */
+const CONFIG = {
+  PROXIES: [
+    // codetabs: primary, works well
+    { build: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`, raw: true },
+    // allorigins: fallback, wraps response in { contents: "..." }
+    { build: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, raw: false },
+  ],
+  YAHOO_CHART: 'https://query2.finance.yahoo.com/v8/finance/chart/',
+  STORAGE_KEY:    'maakavStocks_watchlist',
+  REFRESH_MS:     60000,
+  CATEGORIES:     ['מניות', 'מדדים ותעודות סל', 'מטבעות', 'אגחים'],
+  CAT_CLASS: {
+    'מניות':             'cat-stocks',
+    'מדדים ותעודות סל':  'cat-indices',
+    'מטבעות':            'cat-currencies',
+    'אגחים':             'cat-bonds',
+  },
+  CAT_COLOR: {
+    'מניות':             '#ef5350',
+    'מדדים ותעודות סל':  '#1976d2',
+    'מטבעות':            '#2e7d32',
+    'אגחים':             '#7b1fa2',
+  },
+  CAT_ICON: {
+    'מניות':             '🏢',
+    'מדדים ותעודות סל':  '📊',
+    'מטבעות':            '💱',
+    'אגחים':             '📄',
+  },
+};
+
+/* ══════════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════════ */
+const STATE = {
+  watchlist:  [],        // [{id, symbol, category, addedAt}]
+  marketData: {},        // { AAPL: { price, change, premarket... } }
+  ytdCache:   {},        // { AAPL: 12.4 }
+  countdown:  60,
+  refreshTimer:  null,
+  countdownTimer: null,
+  isLoading:  false,
+  activeFilters: ['מניות', 'מדדים ותעודות סל', 'מטבעות', 'אגחים'],
+  lastMarketQuotes: [],
+  marketPrevClose: {},  // { symbol: Dec31close } — fetched once per session for YTD calc
+};
+
+/* ══════════════════════════════════════════════════════════════
+   STORAGE
+══════════════════════════════════════════════════════════════ */
+function loadWatchlist() {
+  try {
+    const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
+    STATE.watchlist = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    STATE.watchlist = [];
+  }
+}
+
+function saveWatchlist() {
+  try {
+    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(STATE.watchlist));
+  } catch (e) {
+    showError('שגיאה בשמירה לדפדפן (localStorage מלא?)');
+  }
+}
+
+function genId() {
+  return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   API
+══════════════════════════════════════════════════════════════ */
+async function proxyFetch(yahooUrl) {
+  // Try direct first — Yahoo often allows requests from localhost
+  try {
+    const res = await fetch(yahooUrl, { signal: AbortSignal.timeout(6000) });
+    if (res.ok) return await res.json();
+  } catch (e) { /* fall through */ }
+
+  // Try proxies
+  for (const proxy of CONFIG.PROXIES) {
+    try {
+      const res = await fetch(proxy.build(yahooUrl), { signal: AbortSignal.timeout(9000) });
+      if (!res.ok) continue;
+      const json = await res.json();
+      return proxy.raw ? json : JSON.parse(json.contents);
+    } catch (e) {
+      continue;
+    }
+  }
+  throw new Error('All proxies failed');
+}
+
+function parseChartResponse(symbol, data) {
+  const result = data?.chart?.result?.[0];
+  if (!result) return null;
+  const meta  = result.meta;
+  const price = meta.regularMarketPrice;
+  if (price == null) return null;
+
+  const timestamps = result.timestamp || [];
+  const rawCloses  = result.indicators?.quote?.[0]?.close || [];
+
+  // Daily change: find yesterday's close using timestamps.
+  // With interval=1d&range=ytd, the last bar might be TODAY's bar (close ≈ current price),
+  // causing change ≈ 0. We detect this by comparing the last bar's date to today (UTC).
+  const todayStartTs = new Date(new Date().toISOString().slice(0, 10)).getTime() / 1000;
+  let dailyPrevClose = null;
+  let passedToday    = false;
+  for (let i = timestamps.length - 1; i >= 0; i--) {
+    if (rawCloses[i] == null) continue;
+    if (!passedToday) {
+      if (timestamps[i] >= todayStartTs) {
+        passedToday = true; // skip today's bar (its close ≈ regularMarketPrice)
+      } else {
+        dailyPrevClose = rawCloses[i]; // market closed — this IS yesterday
+        break;
+      }
+    } else {
+      dailyPrevClose = rawCloses[i]; // first bar before today = yesterday
+      break;
+    }
+  }
+  const change = dailyPrevClose ? ((price - dailyPrevClose) / dailyPrevClose * 100) : null;
+
+  // YTD: chartPreviousClose = Dec 31 close of previous year
+  const ytdBase = meta.chartPreviousClose;
+  const ytd = ytdBase ? ((price - ytdBase) / ytdBase * 100) : null;
+  if (ytd != null) STATE.ytdCache[symbol] = ytd;
+  return {
+    symbol,
+    name: meta.longName || meta.shortName || symbol,
+    price, change,
+    preMarketPrice:  meta.preMarketPrice         || null,
+    preMarketChange: meta.preMarketChangePercent  || null,
+    currency:    meta.currency    || '',
+    marketState: meta.marketState || '',
+  };
+}
+
+// Fetch price + YTD for a single symbol using v8 chart
+async function fetchSymbolData(symbol) {
+  const params = '?interval=1d&range=ytd';
+
+  // 1. Try local Python proxy (works when using start.bat)
+  try {
+    const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}${params}`,
+      { signal: AbortSignal.timeout(10000) });
+    if (res.ok) return parseChartResponse(symbol, await res.json());
+  } catch (e) { /* fall through */ }
+
+  // 2. Try external proxies
+  const yahooUrl = CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + params;
+  const data = await proxyFetch(yahooUrl);
+  return parseChartResponse(symbol, data);
+}
+
+// Fetch pre/after-market data for a single symbol (1m bars after regularMarketTime)
+async function fetchPreMarketData(symbol) {
+  const params = '?interval=1m&range=1d&includePrePost=true';
+  let data = null;
+  try {
+    const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}${params}`,
+      { signal: AbortSignal.timeout(10000) });
+    if (res.ok) data = await res.json();
+  } catch (e) {}
+  if (!data) {
+    try {
+      const yahooUrl = CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + params;
+      data = await proxyFetch(yahooUrl);
+    } catch (e) { return null; }
+  }
+  const result = data?.chart?.result?.[0];
+  if (!result) return null;
+  const meta       = result.meta;
+  const price      = meta.regularMarketPrice;
+  const regTime    = meta.regularMarketTime || 0;
+  const timestamps = result.timestamp || [];
+  const closes     = result.indicators?.quote?.[0]?.close || [];
+  // Walk backwards: find last bar AFTER regularMarketTime (= extended hours)
+  for (let i = timestamps.length - 1; i >= 0; i--) {
+    if (timestamps[i] > regTime && closes[i] != null) {
+      if (price == null) return null;
+      const prePrice = closes[i];
+      return { preMarketChange: ((prePrice - price) / price * 100) };
+    }
+  }
+  return null;
+}
+
+// Fetch all symbols in parallel (gracefully skips failures); also fetches pre-market
+async function fetchAllSymbols(symbols) {
+  const results = await Promise.allSettled(symbols.map(fetchSymbolData));
+  const data = results
+    .filter(r => r.status === 'fulfilled' && r.value != null)
+    .map(r => r.value);
+
+  // Parallel pre-market fetch for each successfully loaded symbol
+  const preResults = await Promise.allSettled(data.map(d => fetchPreMarketData(d.symbol)));
+  preResults.forEach((r, i) => {
+    if (r.status === 'fulfilled' && r.value) {
+      data[i].preMarketChange = r.value.preMarketChange;
+    }
+  });
+
+  return data;
+}
+
+async function validateSymbol(symbol) {
+  try {
+    const data = await fetchSymbolData(symbol);
+    if (data && data.price != null) {
+      return { valid: true, name: data.name, price: data.price, currency: data.currency };
+    }
+    return { valid: false };
+  } catch (e) {
+    return { valid: false, error: true };
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════════════════════════ */
+function fmtPrice(price, currency) {
+  if (price == null) return '—';
+  const sym = currency === 'ILS' ? '₪' : (currency === 'USD' ? '$' : (currency || ''));
+  return sym + price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
+function fmtPct(val) {
+  if (val == null) return '—';
+  const sign = val >= 0 ? '+' : '';
+  return sign + val.toFixed(2) + '%';
+}
+
+function changeClass(val) {
+  if (val == null) return 'badge-neutral';
+  return val >= 0 ? 'badge-up' : 'badge-down';
+}
+
+function changeArrow(val) {
+  if (val == null) return '';
+  return val >= 0 ? '▲' : '▼';
+}
+
+/* Build unified asset list: fixed market symbols + user watchlist */
+function getAllAssets() {
+  const marketSymbols = new Set(Object.keys(MARKET_META));
+  const assets = [];
+
+  // Fixed market symbols (always present)
+  Object.keys(MARKET_META).forEach(symbol => {
+    const meta = MARKET_META[symbol];
+    const q = STATE.lastMarketQuotes.find(r => r.symbol === symbol) || {};
+    const price = q.price ?? null;
+    const prevClose = STATE.marketPrevClose[symbol] ?? null;
+    const ytd = (prevClose != null && price != null)
+      ? ((price - prevClose) / prevClose * 100)
+      : (STATE.ytdCache[symbol] ?? null);
+    assets.push({
+      symbol,
+      name: meta.name,
+      category: meta.category,
+      price,
+      change: q.change ?? null,
+      preChange: q.preChange ?? null,
+      time: q.time ?? null,
+      ytd,
+      group: meta.group,
+      isWatchlist: false,
+    });
+  });
+
+  // User watchlist (skip duplicates already in market panel)
+  // Sorted: by category order (CONFIG.CATEGORIES), then by symbol A-Z
+  const watchlistAssets = [];
+  STATE.watchlist.forEach(item => {
+    if (marketSymbols.has(item.symbol)) return;
+    const d = STATE.marketData[item.symbol] || {};
+    watchlistAssets.push({
+      symbol: item.symbol,
+      name: d.name || item.symbol,
+      category: item.category,
+      price: d.price ?? null,
+      change: d.change ?? null,
+      preChange: d.preMarketChange ?? null,
+      time: null,
+      ytd: STATE.ytdCache[item.symbol] ?? null,
+      group: 'watchlist',
+      isWatchlist: true,
+    });
+  });
+  watchlistAssets.sort((a, b) => {
+    const ci = c => CONFIG.CATEGORIES.indexOf(c);
+    if (ci(a.category) !== ci(b.category)) return ci(a.category) - ci(b.category);
+    return a.symbol.localeCompare(b.symbol);
+  });
+  assets.push(...watchlistAssets);
+
+  return assets;
+}
+
+function renderUnifiedTable() {
+  const tbody = document.getElementById('market-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const assets      = getAllAssets();
+  const activeFilters = STATE.activeFilters;
+  let count = 0;
+
+  assets.forEach(asset => {
+    if (activeFilters.length > 0 && !activeFilters.includes(asset.category)) return;
+    count++;
+
+    const change    = fmtMarketPct(asset.change);
+    const pre       = fmtMarketPct(asset.preChange);
+    const catColor  = CONFIG.CAT_COLOR[asset.category] || '#999';
+    const timeTxt   = asset.time ? fmtMarketTime(asset.time) : '—';
+    const ytdVal    = asset.ytd;
+    const ytdCls    = ytdVal == null ? 'neutral' : (ytdVal >= 0 ? 'up' : 'down');
+    const ytdTxt    = ytdVal != null ? ytdVal.toFixed(2) + '%' : '—';
+    const removeBtn = asset.isWatchlist
+      ? `<button class="btn-remove-row" data-symbol="${escHtml(asset.symbol)}" title="הסר">✕</button>`
+      : '';
+
+    const tr = document.createElement('tr');
+    tr.className = `mrow mrow-${asset.group}`;
+    tr.innerHTML = `
+      <td class="col-time">${timeTxt}</td>
+      <td class="col-symbol">${escHtml(asset.symbol)}</td>
+      <td class="col-name">${escHtml(asset.name)}</td>
+      <td><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55">${escHtml(asset.category || '')}</span></td>
+      <td class="col-price">${fmtMarketPrice(asset.price, asset.symbol)}</td>
+      <td class="col-change ${change.cls}">${change.text}</td>
+      <td class="col-ytd ${ytdCls}">${ytdTxt}</td>
+      <td class="col-pre ${pre.cls}">${pre.text}</td>
+      <td class="col-btn">${removeBtn}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  if (count === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:#aaa">אין נכסים בקטגוריה הנבחרת</td></tr>`;
+  }
+
+  const el = document.getElementById('market-updated');
+  if (el) el.textContent = new Date().toLocaleTimeString('he-IL');
+}
+
+/* Keep renderAll as alias so existing call sites work */
+function renderAll() { renderUnifiedTable(); }
+
+function renderCard(item) {
+  const d = STATE.marketData[item.symbol] || {};
+  const ytd = STATE.ytdCache[item.symbol];
+  const catClass = CONFIG.CAT_CLASS[item.category] || '';
+
+  const card = document.createElement('div');
+  card.className = `stock-card ${catClass}`;
+  card.dataset.symbol = item.symbol;
+
+  const hasPremarket = d.preMarketPrice != null && d.marketState === 'PRE';
+  const priceDisplay = d.price != null
+    ? fmtPrice(d.price, d.currency)
+    : '<span style="color:#ccc;font-size:0.9rem">טוען...</span>';
+
+  const ytdHtml = ytd != null
+    ? `<span class="badge ${changeClass(ytd)}">${changeArrow(ytd)} ${fmtPct(ytd)} <span class="badge-label">YTD</span></span>`
+    : '';
+
+  const changeHtml = d.change != null
+    ? `<span class="badge ${changeClass(d.change)}">${changeArrow(d.change)} ${fmtPct(d.change)} <span class="badge-label">יום</span></span>`
+    : '';
+
+  const premarketHtml = hasPremarket
+    ? `<div class="card-premarket">
+         <div class="card-premarket-label">🌅 טרום-פתיחה</div>
+         ${fmtPrice(d.preMarketPrice, d.currency)}
+         <span style="margin-right:6px;font-size:0.8rem;color:${d.preMarketChange >= 0 ? 'var(--up)' : 'var(--down)'}">${fmtPct(d.preMarketChange)}</span>
+       </div>`
+    : '';
+
+  card.innerHTML = `
+    <div class="card-top">
+      <div>
+        <div class="card-symbol">${escHtml(item.symbol)}</div>
+        <div class="card-name">${escHtml(d.name || '')}</div>
+      </div>
+      <button class="btn-remove" data-symbol="${escHtml(item.symbol)}" title="הסר">✕</button>
+    </div>
+    <div class="card-price">${priceDisplay}</div>
+    <div class="card-badges">
+      ${changeHtml}
+      ${ytdHtml}
+    </div>
+    ${premarketHtml}
+  `;
+
+  return card;
+}
+
+function updateMarketData(dataArr) {
+  dataArr.forEach(d => {
+    const prev = STATE.marketData[d.symbol];
+    STATE.marketData[d.symbol] = {
+      name:           d.name,
+      price:          d.price,
+      change:         d.change,
+      preMarketPrice: d.preMarketPrice,
+      preMarketChange: d.preMarketChange,
+      currency:       d.currency,
+      marketState:    d.marketState,
+    };
+    if (prev && prev.price != null && d.price != null && prev.price !== d.price) {
+      flashCard(d.symbol, d.price > prev.price ? 'flash-up' : 'flash-down');
+    }
+  });
+}
+
+function flashCard(symbol, cls) {
+  const card = document.querySelector(`.stock-card[data-symbol="${symbol}"]`);
+  if (!card) return;
+  card.classList.remove('flash-up', 'flash-down');
+  void card.offsetWidth; // reflow
+  card.classList.add(cls);
+  setTimeout(() => card.classList.remove(cls), 900);
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   REFRESH & COUNTDOWN
+══════════════════════════════════════════════════════════════ */
+async function refreshQuotes() {
+  refreshMarket(); // refresh market panel data
+  const symbols = STATE.watchlist.map(i => i.symbol);
+  if (symbols.length === 0) { updateTimestamp(); return; }
+  clearError();
+  const data = await fetchAllSymbols(symbols);
+  if (data.length === 0) {
+    showError('שגיאת רשת — לא ניתן לעדכן נתונים. לחץ "רענן" לנסות שוב.');
+    return;
+  }
+  updateMarketData(data);
+  renderUnifiedTable();
+  updateTimestamp();
+}
+
+function updateTimestamp() {
+  const el = document.getElementById('refresh-time');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = `עודכן: ${now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  STATE.countdown = 60;
+  updateCountdownBar(60);
+
+  STATE.countdownTimer = setInterval(() => {
+    STATE.countdown = Math.max(0, STATE.countdown - 1);
+    updateCountdownBar(STATE.countdown);
+  }, 1000);
+
+  STATE.refreshTimer = setInterval(async () => {
+    STATE.countdown = 60;
+    await refreshQuotes();
+    STATE.countdown = 60;
+    updateCountdownBar(60);
+  }, CONFIG.REFRESH_MS);
+}
+
+function stopAutoRefresh() {
+  clearInterval(STATE.refreshTimer);
+  clearInterval(STATE.countdownTimer);
+}
+
+function updateCountdownBar(secs) {
+  const fill = document.getElementById('countdown-fill');
+  if (fill) fill.style.width = (secs / 60 * 100) + '%';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ERROR BANNER
+══════════════════════════════════════════════════════════════ */
+function showError(msg) {
+  const slot = document.getElementById('error-banner-slot');
+  if (!slot) return;
+  slot.innerHTML = `
+    <div class="error-banner">
+      <span>⚠️ ${escHtml(msg)}</span>
+      <button onclick="manualRefresh()">נסה שוב</button>
+    </div>
+  `;
+}
+
+function clearError() {
+  const slot = document.getElementById('error-banner-slot');
+  if (slot) slot.innerHTML = '';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MODAL
+══════════════════════════════════════════════════════════════ */
+let _validSymbolData = null;
+
+function openModal() {
+  _validSymbolData = null;
+  document.getElementById('input-symbol').value = '';
+  document.getElementById('input-category').value = 'מניות';
+  setValidationMsg('', '');
+  document.getElementById('btn-save').disabled = true;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('input-symbol').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+function setValidationMsg(type, html) {
+  const el = document.getElementById('validation-msg');
+  el.className = `validation-msg ${type}`;
+  el.innerHTML = html;
+}
+
+let _validateDebounce = null;
+
+document.getElementById('input-symbol').addEventListener('input', function() {
+  this.value = this.value.toUpperCase();
+  _validSymbolData = null;
+  document.getElementById('btn-save').disabled = true;
+
+  const sym = this.value.trim();
+  if (!sym) { setValidationMsg('empty', ''); return; }
+
+  clearTimeout(_validateDebounce);
+  setValidationMsg('checking', '<span class="spinner"></span> מאמת סמל...');
+
+  _validateDebounce = setTimeout(async () => {
+    const result = await validateSymbol(sym);
+    if (result.valid) {
+      _validSymbolData = result;
+      setValidationMsg('valid', `✓ ${escHtml(result.name)} — ${fmtPrice(result.price, result.currency)}`);
+      document.getElementById('btn-save').disabled = false;
+    } else if (result.error) {
+      setValidationMsg('invalid', '⚠️ שגיאת רשת — לא ניתן לאמת. ניתן לשמור בכל זאת.');
+      // Allow save despite network error (user's risk)
+      _validSymbolData = { valid: true, name: sym };
+      document.getElementById('btn-save').disabled = false;
+    } else {
+      setValidationMsg('invalid', '✗ הסמל לא נמצא. בדוק את האיות.');
+    }
+  }, 700);
+});
+
+document.getElementById('btn-save').addEventListener('click', handleSave);
+document.getElementById('btn-cancel').addEventListener('click', closeModal);
+document.getElementById('btn-open-modal').addEventListener('click', openModal);
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+document.getElementById('input-symbol').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !document.getElementById('btn-save').disabled) handleSave();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+async function handleSave() {
+  const symbol = document.getElementById('input-symbol').value.trim().toUpperCase();
+  const category = document.getElementById('input-category').value;
+  if (!symbol || !_validSymbolData) return;
+
+  // Check for duplicates
+  if (STATE.watchlist.some(i => i.symbol === symbol)) {
+    setValidationMsg('invalid', '⚠️ הסמל כבר קיים ברשימה.');
+    return;
+  }
+
+  const newItem = { id: genId(), symbol, category, addedAt: new Date().toISOString() };
+  STATE.watchlist.push(newItem);
+  saveWatchlist();
+  closeModal();
+
+  // Fetch data for new symbol immediately (YTD + pre-market in parallel)
+  renderUnifiedTable();
+  try {
+    const [data, preData] = await Promise.all([
+      fetchSymbolData(symbol),
+      fetchPreMarketData(symbol),
+    ]);
+    if (data) {
+      if (preData) data.preMarketChange = preData.preMarketChange;
+      updateMarketData([data]);
+      renderUnifiedTable();
+    }
+  } catch (e) { /* show anyway */ }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   REMOVE STOCK — event delegation on unified table
+══════════════════════════════════════════════════════════════ */
+document.getElementById('market-tbody').addEventListener('click', function(e) {
+  const btn = e.target.closest('.btn-remove-row');
+  if (!btn) return;
+  const symbol = btn.dataset.symbol;
+  if (!symbol) return;
+  if (!confirm(`הסר את ${symbol} מהרשימה?`)) return;
+  STATE.watchlist = STATE.watchlist.filter(i => i.symbol !== symbol);
+  delete STATE.marketData[symbol];
+  delete STATE.ytdCache[symbol];
+  saveWatchlist();
+  renderUnifiedTable();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   MANUAL REFRESH
+══════════════════════════════════════════════════════════════ */
+async function manualRefresh() {
+  await refreshQuotes();
+  startAutoRefresh(); // reset countdown
+}
+
+document.getElementById('btn-manual-refresh').addEventListener('click', manualRefresh);
+
+/* ══════════════════════════════════════════════════════════════
+   EXPORT CSV
+══════════════════════════════════════════════════════════════ */
+function exportCSV() {
+  if (STATE.watchlist.length === 0) {
+    alert('הרשימה ריקה — אין מה לייצא.');
+    return;
+  }
+  const rows = [['symbol', 'category', 'addedAt']];
+  // Sort same as table: by category order, then symbol A-Z
+  const sorted = [...STATE.watchlist].sort((a, b) => {
+    const ci = c => CONFIG.CATEGORIES.indexOf(c);
+    if (ci(a.category) !== ci(b.category)) return ci(a.category) - ci(b.category);
+    return a.symbol.localeCompare(b.symbol);
+  });
+  sorted.forEach(item => {
+    rows.push([item.symbol, item.category, item.addedAt || '']);
+  });
+  // Build CSV with quotes (handles Hebrew commas)
+  const csv = rows.map(r =>
+    r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')
+  ).join('\r\n');
+  // BOM (\uFEFF) = Excel opens Hebrew UTF-8 correctly
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `maakav-watchlist-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+
+/* ══════════════════════════════════════════════════════════════
+   MARKET PANEL
+══════════════════════════════════════════════════════════════ */
+const MARKET_META = {
+  'QQQ':     { name: 'נאסד"ק 100', group: 'us',     category: 'מדדים ותעודות סל' },
+  'SPY':     { name: 'S&P 500',    group: 'us',     category: 'מדדים ותעודות סל' },
+  'DIA':     { name: 'דאו ג\'ונס', group: 'us',     category: 'מדדים ותעודות סל' },
+  'IWM':     { name: 'ראסל 2000',  group: 'us',     category: 'מדדים ותעודות סל' },
+  'TA35.TA': { name: 'ת"א 35',     group: 'il',     category: 'מדדים ותעודות סל' },
+  'TA90.TA': { name: 'ת"א 90',     group: 'il',     category: 'מדדים ותעודות סל' },
+  'BTC-USD': { name: 'ביטקוין',    group: 'crypto', category: 'מטבעות' },
+  'ETH-USD': { name: 'איתריום',    group: 'crypto', category: 'מטבעות' },
+};
+
+function fmtMarketPrice(price, symbol) {
+  if (price == null) return '—';
+  const isCrypto = symbol === 'BTC-USD' || symbol === 'ETH-USD';
+  if (isCrypto) return '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtMarketPct(val) {
+  if (val == null) return { text: '—', cls: 'neutral' };
+  return {
+    text: val.toFixed(2) + '%',
+    cls:  val >= 0 ? 'up' : 'down',
+  };
+}
+
+function fmtMarketTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  const now = new Date();
+  const isToday = d.getFullYear() === now.getFullYear()
+               && d.getMonth()    === now.getMonth()
+               && d.getDate()     === now.getDate();
+  const timeStr = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  return isToday ? timeStr : 'אמש ' + timeStr;
+}
+
+function renderMarketTable(quotes) {
+  const tbody = document.getElementById('market-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const activeFilters = STATE.activeFilters;
+
+  quotes.forEach(q => {
+    const meta = MARKET_META[q.symbol] || { name: q.symbol, group: 'us', category: '' };
+
+    // Skip row if its category is filtered out
+    if (activeFilters.length > 0 && meta.category && !activeFilters.includes(meta.category)) return;
+
+    const change    = fmtMarketPct(q.change);
+    const pre       = fmtMarketPct(q.preChange);
+    const catColor  = CONFIG.CAT_COLOR[meta.category] || '#999';
+
+    const tr = document.createElement('tr');
+    tr.className = `mrow mrow-${meta.group}`;
+    tr.innerHTML = `
+      <td class="col-time">${fmtMarketTime(q.time)}</td>
+      <td class="col-name">${escHtml(meta.name)}</td>
+      <td><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55">${escHtml(meta.category || '')}</span></td>
+      <td class="col-price">${fmtMarketPrice(q.price, q.symbol)}</td>
+      <td class="col-change ${change.cls}">${change.text}</td>
+      <td class="col-pre ${pre.cls}">${pre.text}</td>
+      <td class="col-btn"><button class="btn-expand">▼</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const el = document.getElementById('market-updated');
+  if (el) el.textContent = new Date().toLocaleTimeString('he-IL');
+}
+
+// Fetch Dec-31 prevClose for one market symbol (for YTD calc). Called once per session.
+async function fetchMarketSymbolYTD(symbol) {
+  try {
+    const res = await fetch(`/proxy/market/chart?symbol=${encodeURIComponent(symbol)}`,
+      { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.prevClose != null) STATE.marketPrevClose[symbol] = data.prevClose;
+  } catch (e) {}
+}
+
+async function refreshMarket() {
+  try {
+    const res = await fetch('/proxy/market', { signal: AbortSignal.timeout(20000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const quotes = await res.json();
+    STATE.lastMarketQuotes = quotes;
+    renderUnifiedTable();
+
+    // Fetch YTD prevClose for symbols not yet cached (once per session)
+    const needYTD = Object.keys(MARKET_META).filter(s => STATE.marketPrevClose[s] == null);
+    if (needYTD.length > 0) {
+      await Promise.allSettled(needYTD.map(fetchMarketSymbolYTD));
+      renderUnifiedTable(); // re-render now that YTD is available
+    }
+  } catch (e) {
+    const tbody = document.getElementById('market-tbody');
+    if (tbody && STATE.lastMarketQuotes.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:14px;color:#e53935;font-size:0.85rem">
+        ⚠️ שגיאה בטעינת נתוני שוק — הפעל מחדש את start.bat<br>
+        <small style="color:#999">${e.message}</small>
+      </td></tr>`;
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FILTER BAR
+══════════════════════════════════════════════════════════════ */
+function renderFilterBar() {
+  const bar = document.getElementById('filter-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+
+  const label = document.createElement('span');
+  label.className = 'filter-label';
+  label.textContent = '🔽 סינון:';
+  bar.appendChild(label);
+
+  const allActive = CONFIG.CATEGORIES.every(c => STATE.activeFilters.includes(c));
+  const allBtn = document.createElement('button');
+  allBtn.className = `filter-chip filter-chip-all${allActive ? ' all-active' : ''}`;
+  allBtn.textContent = 'הכל';
+  allBtn.title = allActive ? 'בטל בחירת הכל' : 'הצג הכל';
+  allBtn.addEventListener('click', () => {
+    STATE.activeFilters = [...CONFIG.CATEGORIES];
+    renderFilterBar();
+    renderUnifiedTable();
+  });
+  bar.appendChild(allBtn);
+
+  CONFIG.CATEGORIES.forEach(cat => {
+    const active = STATE.activeFilters.includes(cat);
+    const color  = CONFIG.CAT_COLOR[cat];
+    const btn = document.createElement('button');
+    btn.className = 'filter-chip';
+    // Always show category color: bright when active, muted when inactive
+    if (active) {
+      btn.style.cssText = `background:${color};color:#fff;border-color:${color};box-shadow:0 2px 8px ${color}55`;
+    } else {
+      btn.style.cssText = `background:${color}18;color:${color};border-color:${color}55`;
+    }
+    btn.textContent = CONFIG.CAT_ICON[cat] + ' ' + cat;
+    btn.title = `הצג רק ${cat}`;
+    btn.addEventListener('click', () => {
+      // Single-click = show only this category (toggle back to all if already exclusive)
+      if (STATE.activeFilters.length === 1 && STATE.activeFilters[0] === cat) {
+        STATE.activeFilters = [...CONFIG.CATEGORIES];
+      } else {
+        STATE.activeFilters = [cat];
+      }
+      renderFilterBar();
+      renderUnifiedTable();
+    });
+    bar.appendChild(btn);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════ */
+async function init() {
+  loadWatchlist();
+  renderFilterBar();
+  renderUnifiedTable(); // immediate render (market symbols load shortly)
+
+  // Fetch watchlist symbols in parallel with market data
+  if (STATE.watchlist.length > 0) {
+    const symbols = STATE.watchlist.map(i => i.symbol);
+    const data = await fetchAllSymbols(symbols);
+    if (data.length > 0) {
+      updateMarketData(data);
+      renderUnifiedTable();
+    } else {
+      showError('שגיאת רשת — לא ניתן לטעון נתונים. לחץ "רענן" לנסות שוב.');
+    }
+  }
+  updateTimestamp();
+  refreshMarket();
+  startAutoRefresh();
+}
+
+init();
+</script>
+</body>
+</html>
