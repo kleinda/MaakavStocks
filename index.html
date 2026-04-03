@@ -1414,6 +1414,7 @@ function renderUnifiedTable() {
       : '';
 
     const catShort = CONFIG.CAT_SHORT[asset.category] || asset.category;
+    const catIcon  = CONFIG.CAT_ICON[asset.category] ? CONFIG.CAT_ICON[asset.category] + ' ' : '';
     const tr = document.createElement('tr');
     tr.className = `mrow mrow-${asset.group}`;
     tr.innerHTML = `
@@ -1423,7 +1424,7 @@ function renderUnifiedTable() {
         <div class="col-name-sub">${escHtml(asset.name)}</div>
       </td>
       <td class="col-name">${escHtml(asset.name)}</td>
-      <td class="col-cat"><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55"><span class="cat-full">${escHtml(asset.category || '')}</span><span class="cat-short">${escHtml(catShort)}</span></span></td>
+      <td class="col-cat"><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55"><span class="cat-full">${catIcon}${escHtml(asset.category || '')}</span><span class="cat-short">${catIcon}${escHtml(catShort)}</span></span></td>
       <td class="col-price">${fmtMarketPrice(asset.price, asset.symbol)}</td>
       <td class="col-break"></td>
       <td class="col-change ${change.cls}">${change.text}</td>
