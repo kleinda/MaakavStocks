@@ -1605,7 +1605,7 @@ let _validSymbolData = null;
 function openModal() {
   _validSymbolData = null;
   document.getElementById('input-symbol').value = '';
-  document.getElementById('input-category').value = 'מניות';
+  document.getElementById('input-category').value = 'מניות חול';
   setValidationMsg('', '');
   document.getElementById('btn-save').disabled = true;
   document.getElementById('modal-overlay').classList.remove('hidden');
@@ -1671,6 +1671,7 @@ async function handleSave() {
   const symbol = document.getElementById('input-symbol').value.trim().toUpperCase();
   const category = document.getElementById('input-category').value;
   if (!symbol || !_validSymbolData) return;
+  if (!category) { setValidationMsg('invalid', '⚠️ יש לבחור קטגוריה.'); return; }
 
   // Check for duplicates
   if (STATE.watchlist.some(i => i.symbol === symbol)) {
