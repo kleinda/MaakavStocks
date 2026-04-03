@@ -645,8 +645,9 @@
     .mrow-il        td { background: #f1f8e9; }
     .mrow-crypto    td { background: #ede7f6; }
     .mrow-tech      td { background: #fffde7; }
-    .mrow-watchlist td { background: #fafafa; }
-    .mrow-watch     td { background: #e0f7fa; }
+    .mrow-watchlist  td { background: #fafafa; }
+    .mrow-watch      td { background: #e0f7fa; }
+    .mrow-il-stocks  td { background: #fff8e1; }
 
     .market-table tr:hover td { filter: brightness(0.96); }
 
@@ -813,8 +814,9 @@
     body.dark .mrow-il td       { background: #151d14; }
     body.dark .mrow-crypto td   { background: #1a1629; }
     body.dark .mrow-tech td     { background: #1e1e12; }
-    body.dark .mrow-watchlist td{ background: #141620; }
-    body.dark .mrow-watch td    { background: #0a1f22; }
+    body.dark .mrow-watchlist td { background: #141620; }
+    body.dark .mrow-watch td     { background: #0a1f22; }
+    body.dark .mrow-il-stocks td { background: #1a1300; }
     body.dark .market-table-scroll { border-color: #3949ab; }
     body.dark .market-footer    { color: #555; }
     body.dark .modal-box        { background: #1a1d27; }
@@ -979,7 +981,8 @@
     <div class="form-group">
       <label class="form-label" for="input-category">קטגוריה</label>
       <select class="form-control" id="input-category">
-        <option value="מניות">מניות</option>
+        <option value="מניות חול">מניות חול</option>
+        <option value="מניות ישראל">מניות ישראל</option>
         <option value="מדדים ותעודות סל">מדדים ותעודות סל</option>
         <option value="מטבעות">מטבעות</option>
         <option value="אגחים">אגחים</option>
@@ -1040,30 +1043,34 @@ const CONFIG = {
   YAHOO_CHART: 'https://query2.finance.yahoo.com/v8/finance/chart/',
   STORAGE_KEY:    'maakavStocks_watchlist',
   REFRESH_MS:     60000,
-  CATEGORIES:     ['מניות', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב'],
+  CATEGORIES:     ['מניות חול', 'מניות ישראל', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב'],
   CAT_CLASS: {
-    'מניות':             'cat-stocks',
+    'מניות חול':         'cat-stocks',
+    'מניות ישראל':       'cat-il-stocks',
     'מדדים ותעודות סל':  'cat-indices',
     'מטבעות':            'cat-currencies',
     'אגחים':             'cat-bonds',
     'מעקב':              'cat-watch',
   },
   CAT_COLOR: {
-    'מניות':             '#ef5350',
+    'מניות חול':         '#ef5350',
+    'מניות ישראל':       '#f57f17',
     'מדדים ותעודות סל':  '#1976d2',
     'מטבעות':            '#2e7d32',
     'אגחים':             '#7b1fa2',
     'מעקב':              '#00838f',
   },
   CAT_SHORT: {
-    'מניות':             'מניות',
+    'מניות חול':         'חול',
+    'מניות ישראל':       'ישראל',
     'מדדים ותעודות סל':  'מדד/סל',
     'מטבעות':            'מטבע',
     'אגחים':             'אגח',
     'מעקב':              'מעקב',
   },
   CAT_ICON: {
-    'מניות':             '🏢',
+    'מניות חול':         '🏢',
+    'מניות ישראל':       '🇮🇱',
     'מדדים ותעודות סל':  '📊',
     'מטבעות':            '💱',
     'אגחים':             '📄',
@@ -1082,7 +1089,7 @@ const STATE = {
   refreshTimer:  null,
   countdownTimer: null,
   isLoading:  false,
-  activeFilters: ['מניות', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב'],
+  activeFilters: ['מניות חול', 'מניות ישראל', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב'],
   lastMarketQuotes: [],
   marketPrevClose: {},  // { symbol: Dec31close } — fetched once per session for YTD calc
   sort: { col: null, dir: 'asc' },
@@ -1371,7 +1378,7 @@ function getAllAssets() {
       preChange: d.preMarketChange ?? null,
       time: null,
       ytd: STATE.ytdCache[item.symbol] ?? null,
-      group: item.category === 'מעקב' ? 'watch' : 'watchlist',
+      group: item.category === 'מעקב' ? 'watch' : item.category === 'מניות ישראל' ? 'il-stocks' : 'watchlist',
       isWatchlist: true,
     });
   });
