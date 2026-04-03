@@ -1256,12 +1256,7 @@ async function fetchPreMarketData(symbol) {
       { signal: AbortSignal.timeout(10000) });
     if (res.ok) data = await res.json();
   } catch (e) {}
-  if (!data) {
-    try {
-      const yahooUrl = CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + params;
-      data = await proxyFetch(yahooUrl);
-    } catch (e) { return null; }
-  }
+  if (!data) return null; // local proxy only — external proxies don't support 1m interval
   const result = data?.chart?.result?.[0];
   if (!result) return null;
   const meta       = result.meta;
