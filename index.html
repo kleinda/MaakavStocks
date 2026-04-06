@@ -648,6 +648,7 @@
     .mrow-watchlist  td { background: #fafafa; }
     .mrow-watch      td { background: #e0f7fa; }
     .mrow-il-stocks  td { background: #fff8e1; }
+    .mrow-commodity  td { background: #f5e6d3; }
 
     .market-table tr:hover td { filter: brightness(0.96); }
 
@@ -816,7 +817,8 @@
     body.dark .mrow-tech td     { background: #1e1e12; }
     body.dark .mrow-watchlist td { background: #141620; }
     body.dark .mrow-watch td     { background: #0a1f22; }
-    body.dark .mrow-il-stocks td { background: #1a1300; }
+    body.dark .mrow-il-stocks td  { background: #1a1300; }
+    body.dark .mrow-commodity td  { background: #1f1209; }
     body.dark .market-table-scroll { border-color: #3949ab; }
     body.dark .market-footer    { color: #555; }
     body.dark .modal-box        { background: #1a1d27; }
@@ -1373,7 +1375,7 @@ function getAllAssets() {
       preChange: d.preMarketChange ?? null,
       time: null,
       ytd: STATE.ytdCache[item.symbol] ?? null,
-      group: item.category === 'מעקב' ? 'watch' : item.category === 'מניות ישראל' ? 'il-stocks' : 'watchlist',
+      group: item.category === 'מעקב' ? 'watch' : item.category === 'מניות ישראל' ? 'il-stocks' : item.symbol.endsWith('=F') ? 'commodity' : 'watchlist',
       isWatchlist: true,
     });
   });

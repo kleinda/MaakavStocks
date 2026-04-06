@@ -22,29 +22,43 @@ HEADERS = {
 MARKET_SYMBOLS = ["QQQ", "SPY", "DIA", "IWM", "BTC-USD", "ETH-USD", "TA35.TA", "TA90.TA"]
 
 def fetch_quote(symbol):
-    """Fetch real-time quote + pre/after-hours price from Yahoo Finance v8/chart."""
-    url = ("https://query1.finance.yahoo.com/v8/finance/chart/"
-           + symbol + "?interval=1m&range=1d&includePrePost=true")
-    req = urllib.request.Request(url, headers=HEADERS)
+    """Fetch real-time quote + daily change + pre/after-hours price."""
+    base = "https://query1.finance.yahoo.com/v8/finance/chart/"
+
+    # 1. Daily bars (5d) — accurate previous close even after holidays
+    url_d = base + symbol + "?interval=1d&range=5d"
+    req = urllib.request.Request(url_d, headers=HEADERS)
     with urllib.request.urlopen(req, timeout=12) as r:
-        data = json.loads(r.read())
-    res  = data["chart"]["result"][0]
-    meta = res["meta"]
+        data_d = json.loads(r.read())
+    res_d    = data_d["chart"]["result"][0]
+    meta     = res_d["meta"]
     price    = meta.get("regularMarketPrice")
-    prev     = meta.get("previousClose") or meta.get("chartPreviousClose")
     reg_time = meta.get("regularMarketTime") or 0
+
+    # Previous close = second-to-last valid daily bar (skips holidays correctly)
+    closes_d = res_d["indicators"]["quote"][0].get("close", [])
+    valid_d  = [c for c in closes_d if c is not None]
+    prev     = valid_d[-2] if len(valid_d) >= 2 else None
     change_pct = ((price - prev) / prev * 100) if (price and prev) else None
 
-    # Pre/after-hours: last valid 1m close AFTER regularMarketTime
+    # 2. 1m intraday — pre/after-market detection
     pre_price  = None
     pre_change = None
-    timestamps = res.get("timestamp", [])
-    closes     = res["indicators"]["quote"][0].get("close", [])
-    for t, c in reversed(list(zip(timestamps, closes))):
-        if t > reg_time and c is not None:
-            pre_price  = c
-            pre_change = ((pre_price - price) / price * 100) if price else None
-            break
+    try:
+        url_m = base + symbol + "?interval=1m&range=1d&includePrePost=true"
+        req2 = urllib.request.Request(url_m, headers=HEADERS)
+        with urllib.request.urlopen(req2, timeout=10) as r2:
+            data_m = json.loads(r2.read())
+        res_m      = data_m["chart"]["result"][0]
+        timestamps = res_m.get("timestamp", [])
+        closes_m   = res_m["indicators"]["quote"][0].get("close", [])
+        for t, c in reversed(list(zip(timestamps, closes_m))):
+            if t > reg_time and c is not None:
+                pre_price  = c
+                pre_change = ((pre_price - price) / price * 100) if price else None
+                break
+    except Exception:
+        pass  # pre-market optional
 
     return {
         "symbol":    symbol,
