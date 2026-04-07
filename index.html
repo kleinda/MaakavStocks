@@ -1976,16 +1976,17 @@ async function openChartModal(symbol, name, interval, range) {
     if (interval === '15m') paramsList.push('?interval=1h&range=5d');
 
     let data = null;
+    let usedParams = paramsList[0];
     for (const p of paramsList) {
       try {
         const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}${p}`,
           { signal: AbortSignal.timeout(10000) });
-        if (res.ok) { data = await res.json(); break; }
+        if (res.ok) { data = await res.json(); usedParams = p; break; }
       } catch(e) {}
     }
     if (!data) {
       for (const p of paramsList) {
-        try { data = await proxyFetch(CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + p); break; }
+        try { data = await proxyFetch(CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + p); usedParams = p; break; }
         catch(e) {}
       }
     }
@@ -1995,8 +1996,16 @@ async function openChartModal(symbol, name, interval, range) {
 
     const timestamps = result.timestamp || [];
     const closes = result.indicators?.quote?.[0]?.close || [];
-    const pairs = timestamps.map((t, i) => ({ t, c: closes[i] })).filter(p => p.c != null);
+    let pairs = timestamps.map((t, i) => ({ t, c: closes[i] })).filter(p => p.c != null);
     if (pairs.length === 0) throw new Error('אין נקודות נתונים');
+
+    // If 1D was requested but fallback returned multi-day data: filter to today's bars only
+    const isFallback = (range === '1d' && !usedParams.includes('range=1d'));
+    if (isFallback) {
+      const todayStartTs = new Date(new Date().toISOString().slice(0, 10)).getTime() / 1000;
+      const todayPairs = pairs.filter(p => p.t >= todayStartTs);
+      if (todayPairs.length > 0) pairs = todayPairs;
+    }
 
     const isIntraday = (range === '1d' || range === '5d');
     const labels = pairs.map(p => {
@@ -2008,9 +2017,16 @@ async function openChartModal(symbol, name, interval, range) {
     const minVal    = Math.min(...values);
     const maxVal    = Math.max(...values);
     const last      = values[values.length - 1];
-    // For 1D: use chartPreviousClose as base (= yesterday's close) — more accurate than first bar
-    const prevClose = result.meta?.chartPreviousClose;
-    const first     = (range === '1d' && prevClose) ? prevClose : values[0];
+    // For 1D: find yesterday's last bar as base (accurate even with fallback data)
+    let first;
+    if (range === '1d') {
+      const todayStartTs = new Date(new Date().toISOString().slice(0, 10)).getTime() / 1000;
+      const allPairs = timestamps.map((t, i) => ({ t, c: closes[i] })).filter(p => p.c != null);
+      const prevBar  = allPairs.slice().reverse().find(p => p.t < todayStartTs);
+      first = prevBar?.c ?? result.meta?.chartPreviousClose ?? values[0];
+    } else {
+      first = values[0];
+    }
     const chgPct    = ((last - first) / first * 100);
     const isUp      = chgPct >= 0;
     const lineColor = isUp ? '#1b8a3c' : '#c62828';
