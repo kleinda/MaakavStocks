@@ -1970,15 +1970,24 @@ async function openChartModal(symbol, name, interval, range) {
   if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
 
   try {
-    const params = `?interval=${interval}&range=${range}`;
+    // Build list of param candidates: primary + fallbacks for short intervals
+    const paramsList = [`?interval=${interval}&range=${range}`];
+    if (interval === '5m')  paramsList.push('?interval=1h&range=5d');
+    if (interval === '15m') paramsList.push('?interval=1h&range=5d');
+
     let data = null;
-    try {
-      const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}${params}`,
-        { signal: AbortSignal.timeout(10000) });
-      if (res.ok) data = await res.json();
-    } catch(e) {}
+    for (const p of paramsList) {
+      try {
+        const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}${p}`,
+          { signal: AbortSignal.timeout(10000) });
+        if (res.ok) { data = await res.json(); break; }
+      } catch(e) {}
+    }
     if (!data) {
-      data = await proxyFetch(CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + params);
+      for (const p of paramsList) {
+        try { data = await proxyFetch(CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + p); break; }
+        catch(e) {}
+      }
     }
 
     const result = data?.chart?.result?.[0];
