@@ -1998,8 +1998,10 @@ async function openChartModal(symbol, name, interval, range) {
     const values    = pairs.map(p => p.c);
     const minVal    = Math.min(...values);
     const maxVal    = Math.max(...values);
-    const first     = values[0];
     const last      = values[values.length - 1];
+    // For 1D: use chartPreviousClose as base (= yesterday's close) — more accurate than first bar
+    const prevClose = result.meta?.chartPreviousClose;
+    const first     = (range === '1d' && prevClose) ? prevClose : values[0];
     const chgPct    = ((last - first) / first * 100);
     const isUp      = chgPct >= 0;
     const lineColor = isUp ? '#1b8a3c' : '#c62828';
