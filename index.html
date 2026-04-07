@@ -891,6 +891,28 @@
     }
     body.dark .chart-stats { background: rgba(255,255,255,0.05); }
     .chart-stat { color: var(--text-muted); }
+    .chart-ranges {
+      display: flex;
+      gap: 6px;
+      direction: ltr;
+    }
+    .chart-range-btn {
+      background: rgba(0,0,0,0.06);
+      border: none;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-family: var(--font);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: background 0.15s;
+    }
+    .chart-range-btn:hover { background: rgba(0,0,0,0.12); }
+    .chart-range-btn.active { background: #1976d2; color: #fff; }
+    body.dark .chart-range-btn { background: rgba(255,255,255,0.08); }
+    body.dark .chart-range-btn:hover { background: rgba(255,255,255,0.15); }
+    body.dark .chart-range-btn.active { background: #1976d2; color: #fff; }
     .chart-canvas-wrap { height: 280px; position: relative; }
     @media (max-width: 480px) { .chart-canvas-wrap { height: 200px; } .chart-box { padding: 16px; gap: 10px; } }
   </style>
@@ -967,6 +989,13 @@
         <div class="chart-name" id="chart-name"></div>
       </div>
       <button class="chart-close" id="chart-close">✕</button>
+    </div>
+    <div class="chart-ranges" id="chart-ranges">
+      <button class="chart-range-btn active" data-interval="5m" data-range="1d">1D</button>
+      <button class="chart-range-btn" data-interval="15m" data-range="5d">5D</button>
+      <button class="chart-range-btn" data-interval="1d" data-range="1mo">1M</button>
+      <button class="chart-range-btn" data-interval="1d" data-range="ytd">YTD</button>
+      <button class="chart-range-btn" data-interval="1d" data-range="1y">1Y</button>
     </div>
     <div class="chart-stats" id="chart-stats"></div>
     <div class="chart-canvas-wrap">
@@ -1914,29 +1943,42 @@ function updateSortIndicators() {
    CHART MODAL
 ══════════════════════════════════════════════════════════════ */
 let _chartInstance = null;
+let _chartSymbol   = null;
+let _chartName     = null;
 
 function closeChartModal() {
   document.getElementById('chart-overlay').classList.add('hidden');
   if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
 }
 
-async function openChartModal(symbol, name) {
+async function openChartModal(symbol, name, interval, range) {
+  _chartSymbol = symbol;
+  _chartName   = name;
+  interval = interval || '5m';
+  range    = range    || '1d';
+
   document.getElementById('chart-overlay').classList.remove('hidden');
   document.getElementById('chart-symbol').textContent = symbol;
   document.getElementById('chart-name').textContent = name && name !== symbol ? name : '';
   document.getElementById('chart-stats').innerHTML = '<span class="chart-stat"><span class="spinner"></span> טוען...</span>';
+
+  // Sync active button
+  document.querySelectorAll('.chart-range-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.interval === interval && btn.dataset.range === range);
+  });
+
   if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
 
   try {
+    const params = `?interval=${interval}&range=${range}`;
     let data = null;
     try {
-      const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}?interval=1d&range=1y`,
+      const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}${params}`,
         { signal: AbortSignal.timeout(10000) });
       if (res.ok) data = await res.json();
     } catch(e) {}
     if (!data) {
-      const url = CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + '?interval=1d&range=1y';
-      data = await proxyFetch(url);
+      data = await proxyFetch(CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + params);
     }
 
     const result = data?.chart?.result?.[0];
@@ -1947,29 +1989,35 @@ async function openChartModal(symbol, name) {
     const pairs = timestamps.map((t, i) => ({ t, c: closes[i] })).filter(p => p.c != null);
     if (pairs.length === 0) throw new Error('אין נקודות נתונים');
 
+    const isIntraday = (range === '1d' || range === '5d');
     const labels = pairs.map(p => {
       const d = new Date(p.t * 1000);
+      if (isIntraday) return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
-    const values  = pairs.map(p => p.c);
-    const min52   = Math.min(...values);
-    const max52   = Math.max(...values);
-    const first   = values[0];
-    const last    = values[values.length - 1];
-    const chgPct  = ((last - first) / first * 100);
-    const isUp    = chgPct >= 0;
+    const values    = pairs.map(p => p.c);
+    const minVal    = Math.min(...values);
+    const maxVal    = Math.max(...values);
+    const first     = values[0];
+    const last      = values[values.length - 1];
+    const chgPct    = ((last - first) / first * 100);
+    const isUp      = chgPct >= 0;
     const lineColor = isUp ? '#1b8a3c' : '#c62828';
     const fmt = v => v.toLocaleString('en-US', { maximumFractionDigits: 2 });
 
+    const rangeLabel = { '1d':'היום', '5d':'5 ימים', '1mo':'חודש', 'ytd':'מתחילת השנה', '1y':'שנה' }[range] || range;
+    const hiLoLabel  = range === '1y' ? '52W' : rangeLabel;
+
     document.getElementById('chart-stats').innerHTML = `
-      <span class="chart-stat">52W גבוה: <strong style="color:#1b8a3c">${fmt(max52)}</strong></span>
-      <span class="chart-stat">52W נמוך: <strong style="color:#c62828">${fmt(min52)}</strong></span>
-      <span class="chart-stat">שנה: <strong style="color:${lineColor}">${isUp?'+':''}${chgPct.toFixed(2)}%</strong></span>
+      <span class="chart-stat">${hiLoLabel} גבוה: <strong style="color:#1b8a3c">${fmt(maxVal)}</strong></span>
+      <span class="chart-stat">${hiLoLabel} נמוך: <strong style="color:#c62828">${fmt(minVal)}</strong></span>
+      <span class="chart-stat">${rangeLabel}: <strong style="color:${lineColor}">${isUp?'+':''}${chgPct.toFixed(2)}%</strong></span>
     `;
 
     const isDark    = document.body.classList.contains('dark');
     const tickColor = isDark ? '#9e9e9e' : '#666';
     const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+    const maxTicks  = isIntraday ? 6 : 8;
 
     const ctx = document.getElementById('chart-canvas').getContext('2d');
     _chartInstance = new Chart(ctx, {
@@ -1991,12 +2039,10 @@ async function openChartModal(symbol, name) {
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: {
-            callbacks: { label: ctx => ' ' + fmt(ctx.parsed.y) }
-          }
+          tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.parsed.y) } }
         },
         scales: {
-          x: { ticks: { color: tickColor, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: gridColor } },
+          x: { ticks: { color: tickColor, maxTicksLimit: maxTicks, maxRotation: 0 }, grid: { color: gridColor } },
           y: { position: 'left', ticks: { color: tickColor, maxTicksLimit: 6 }, grid: { color: gridColor } }
         },
         interaction: { mode: 'index', intersect: false },
@@ -2012,6 +2058,13 @@ document.getElementById('chart-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeChartModal();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChartModal(); });
+
+// Range buttons
+document.getElementById('chart-ranges').addEventListener('click', function(e) {
+  const btn = e.target.closest('.chart-range-btn');
+  if (!btn || !_chartSymbol) return;
+  openChartModal(_chartSymbol, _chartName, btn.dataset.interval, btn.dataset.range);
+});
 
 // Row click → open chart
 document.getElementById('market-tbody').addEventListener('click', function(e) {
