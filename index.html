@@ -2131,7 +2131,7 @@ function renderFilterBar() {
   CONFIG.CATEGORIES.forEach(cat => {
     const opt = document.createElement('option');
     opt.value = cat;
-    opt.textContent = CONFIG.CAT_ICON[cat] + ' ' + cat;
+    opt.textContent = '\u200F' + CONFIG.CAT_ICON[cat] + ' ' + cat;
     if (!allActive && STATE.activeFilters.includes(cat)) opt.selected = true;
     sel.appendChild(opt);
   });
