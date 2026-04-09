@@ -1979,12 +1979,7 @@ async function openChartModal(symbol, name, interval, range) {
         if (res.ok) { data = await res.json(); usedParams = p; break; }
       } catch(e) {}
     }
-    if (!data) {
-      for (const p of paramsList) {
-        try { data = await proxyFetch(CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + p); usedParams = p; break; }
-        catch(e) {}
-      }
-    }
+    // No external proxy fallback for chart — server.py is the only path (avoids CORS errors)
 
     const result = data?.chart?.result?.[0];
     if (!result) throw new Error('אין נתונים');
