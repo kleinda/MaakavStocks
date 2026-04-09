@@ -154,12 +154,17 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(data)
+            except ConnectionAbortedError:
+                pass  # client disconnected (timeout/abort) — not an error
             except Exception as e:
-                self.send_response(502)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({'error': str(e)}).encode())
+                try:
+                    self.send_response(502)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': str(e)}).encode())
+                except ConnectionAbortedError:
+                    pass
         else:
             super().do_GET()
 
@@ -168,6 +173,9 @@ class Handler(SimpleHTTPRequestHandler):
         path = args[0] if args else ''
         if '/api/' in path or '/proxy/' in path:
             print(f'  → {path} {args[1] if len(args) > 1 else ""}')
+
+    def log_error(self, fmt, *args):
+        pass  # suppress default error output
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
