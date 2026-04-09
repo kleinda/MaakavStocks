@@ -1191,12 +1191,7 @@ function genId() {
    API
 ══════════════════════════════════════════════════════════════ */
 async function proxyFetch(yahooUrl) {
-  // Try direct first — Yahoo often allows requests from localhost
-  try {
-    const res = await fetch(yahooUrl, { signal: AbortSignal.timeout(6000) });
-    if (res.ok) return await res.json();
-  } catch (e) { /* fall through */ }
-
+  // Skip direct fetch — causes CORS errors in browser; server.py handles Yahoo directly
   // Try proxies
   for (const proxy of CONFIG.PROXIES) {
     try {
