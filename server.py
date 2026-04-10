@@ -34,6 +34,8 @@ def fetch_quote(symbol):
     meta     = res_d["meta"]
     price    = meta.get("regularMarketPrice")
     reg_time = meta.get("regularMarketTime") or 0
+    name     = meta.get("longName") or meta.get("shortName") or symbol
+    currency = meta.get("currency") or ""
 
     # Previous close = second-to-last valid daily bar (skips holidays correctly)
     closes_d = res_d["indicators"]["quote"][0].get("close", [])
@@ -62,6 +64,8 @@ def fetch_quote(symbol):
 
     return {
         "symbol":    symbol,
+        "name":      name,
+        "currency":  currency,
         "price":     price,
         "change":    change_pct,
         "time":      reg_time,
@@ -111,6 +115,38 @@ class Handler(SimpleHTTPRequestHandler):
                 self.wfile.write(body)
             except Exception as e:
                 self.send_error(502, 'Chart error: ' + str(e))
+            return
+
+        # Quotes for arbitrary symbols — used by watchlist
+        if parsed.path.startswith('/proxy/quotes'):
+            params = dict(urllib.parse.parse_qsl(parsed.query))
+            symbols_str = params.get('symbols', '')
+            symbols = [s.strip() for s in symbols_str.split(',') if s.strip()]
+            if not symbols:
+                self.send_error(400, 'Missing symbols')
+                return
+            try:
+                quotes_map = {}
+                with ThreadPoolExecutor(max_workers=min(len(symbols), 10)) as ex:
+                    futures = {ex.submit(fetch_quote, sym): sym for sym in symbols}
+                    for fut in as_completed(futures, timeout=20):
+                        sym = futures[fut]
+                        try:
+                            quotes_map[sym] = fut.result()
+                        except Exception:
+                            quotes_map[sym] = {'symbol': sym, 'name': sym, 'currency': '',
+                                               'price': None, 'change': None, 'time': None,
+                                               'prePrice': None, 'preChange': None}
+                result = [quotes_map[sym] for sym in symbols if sym in quotes_map]
+                body = json.dumps(result, ensure_ascii=False).encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except Exception as e:
+                self.send_error(502, 'Quotes proxy error: ' + str(e))
             return
 
         # Market quotes — all symbols in parallel
@@ -167,6 +203,14 @@ class Handler(SimpleHTTPRequestHandler):
                     pass
         else:
             super().do_GET()
+
+    def end_headers(self):
+        # No-cache for HTML/JS/CSS so browser always gets latest version
+        if self.path.split('?')[0].endswith(('.html', '.js', '.css', '.json')):
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+        super().end_headers()
 
     def log_message(self, fmt, *args):
         # Only log API calls, not static files

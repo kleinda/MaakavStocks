@@ -1065,13 +1065,6 @@ const watchlistCol = db.collection('watchlist');
    CONFIG
 ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  PROXIES: [
-    // codetabs: primary, works well
-    { build: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`, raw: true },
-    // allorigins: fallback, wraps response in { contents: "..." }
-    { build: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, raw: false },
-  ],
-  YAHOO_CHART: 'https://query2.finance.yahoo.com/v8/finance/chart/',
   STORAGE_KEY:    'maakavStocks_watchlist',
   REFRESH_MS:     60000,
   CATEGORIES:     ['מניות חול', 'מניות ישראל', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב'],
@@ -1115,7 +1108,6 @@ const CONFIG = {
 const STATE = {
   watchlist:  [],        // [{id, symbol, category, addedAt}]
   marketData: {},        // { AAPL: { price, change, premarket... } }
-  ytdCache:   {},        // { AAPL: 12.4 }
   countdown:  60,
   refreshTimer:  null,
   countdownTimer: null,
@@ -1190,140 +1182,42 @@ function genId() {
 /* ══════════════════════════════════════════════════════════════
    API
 ══════════════════════════════════════════════════════════════ */
-async function proxyFetch(yahooUrl) {
-  // Skip direct fetch — causes CORS errors in browser; server.py handles Yahoo directly
-  // Try proxies
-  for (const proxy of CONFIG.PROXIES) {
-    try {
-      const res = await fetch(proxy.build(yahooUrl), { signal: AbortSignal.timeout(9000) });
-      if (!res.ok) continue;
-      const json = await res.json();
-      return proxy.raw ? json : JSON.parse(json.contents);
-    } catch (e) {
-      continue;
-    }
-  }
-  throw new Error('All proxies failed');
-}
-
-function parseChartResponse(symbol, data) {
-  const result = data?.chart?.result?.[0];
-  if (!result) return null;
-  const meta  = result.meta;
-  const price = meta.regularMarketPrice;
-  if (price == null) return null;
-
-  const timestamps = result.timestamp || [];
-  const rawCloses  = result.indicators?.quote?.[0]?.close || [];
-
-  // Daily change logic:
-  // Market OPEN  → (regularMarketPrice - yesterday_close) / yesterday_close
-  // Market CLOSED → (yesterday_close - day_before_close) / day_before_close = yesterday's final change
-  const todayStartTs = new Date(new Date().toISOString().slice(0, 10)).getTime() / 1000;
-  const regTime = meta.regularMarketTime || 0;
-  const priceIsFromToday = regTime >= todayStartTs;
-
-  // Collect last 3 valid bars (most recent first)
-  const recentBars = [];
-  for (let i = timestamps.length - 1; i >= 0 && recentBars.length < 3; i--) {
-    if (rawCloses[i] != null) recentBars.push({ ts: timestamps[i], close: rawCloses[i] });
-  }
-
-  let change = null;
-  if (priceIsFromToday) {
-    // Market open: live price vs yesterday's bar
-    const prevBar = recentBars.find(b => b.ts < todayStartTs);
-    if (prevBar) change = (price - prevBar.close) / prevBar.close * 100;
-  } else {
-    // Market closed: bar[0]=yesterday bar[1]=day-before → yesterday's final change
-    if (recentBars.length >= 2) {
-      change = (recentBars[0].close - recentBars[1].close) / recentBars[1].close * 100;
-    }
-  }
-
-  // YTD: chartPreviousClose = Dec 31 close of previous year
-  const ytdBase = meta.chartPreviousClose;
-  const ytd = ytdBase ? ((price - ytdBase) / ytdBase * 100) : null;
-  if (ytd != null) STATE.ytdCache[symbol] = ytd;
-  return {
-    symbol,
-    name: meta.longName || meta.shortName || symbol,
-    price, change,
-    preMarketPrice:  meta.preMarketPrice         || null,
-    preMarketChange: meta.preMarketChangePercent  || null,
-    currency:    meta.currency    || '',
-    marketState: meta.marketState || '',
-  };
-}
-
-// Fetch price + YTD for a single symbol using v8 chart
-async function fetchSymbolData(symbol) {
-  const params = '?interval=1d&range=ytd';
-
-  // 1. Try local Python proxy (works when using start.bat)
-  try {
-    const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}${params}`,
-      { signal: AbortSignal.timeout(10000) });
-    if (res.ok) return parseChartResponse(symbol, await res.json());
-  } catch (e) { /* fall through */ }
-
-  // 2. Try external proxies
-  const yahooUrl = CONFIG.YAHOO_CHART + encodeURIComponent(symbol) + params;
-  const data = await proxyFetch(yahooUrl);
-  return parseChartResponse(symbol, data);
-}
-
-// Fetch pre/after-market data for a single symbol (1m bars after regularMarketTime)
-async function fetchPreMarketData(symbol) {
-  const params = '?interval=1m&range=1d&includePrePost=true';
-  let data = null;
-  try {
-    const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}${params}`,
-      { signal: AbortSignal.timeout(10000) });
-    if (res.ok) data = await res.json();
-  } catch (e) {}
-  if (!data) return null; // local proxy only — external proxies don't support 1m interval
-  const result = data?.chart?.result?.[0];
-  if (!result) return null;
-  const meta       = result.meta;
-  const price      = meta.regularMarketPrice;
-  const regTime    = meta.regularMarketTime || 0;
-  const timestamps = result.timestamp || [];
-  const closes     = result.indicators?.quote?.[0]?.close || [];
-  // Walk backwards: find last bar AFTER regularMarketTime (= extended hours)
-  for (let i = timestamps.length - 1; i >= 0; i--) {
-    if (timestamps[i] > regTime && closes[i] != null) {
-      if (price == null) return null;
-      const prePrice = closes[i];
-      return { preMarketChange: ((prePrice - price) / price * 100) };
-    }
-  }
-  return null;
-}
-
-// Fetch all symbols in parallel (gracefully skips failures); also fetches pre-market
+// Fetch quotes for multiple symbols via server.py /proxy/quotes (parallel, fast)
 async function fetchAllSymbols(symbols) {
-  const results = await Promise.allSettled(symbols.map(fetchSymbolData));
-  const data = results
-    .filter(r => r.status === 'fulfilled' && r.value != null)
-    .map(r => r.value);
-
-  // Parallel pre-market fetch for each successfully loaded symbol
-  const preResults = await Promise.allSettled(data.map(d => fetchPreMarketData(d.symbol)));
-  preResults.forEach((r, i) => {
-    if (r.status === 'fulfilled' && r.value) {
-      data[i].preMarketChange = r.value.preMarketChange;
-    }
-  });
-
-  return data;
+  if (symbols.length === 0) return [];
+  try {
+    const res = await fetch(
+      `/proxy/quotes?symbols=${symbols.map(encodeURIComponent).join(',')}`,
+      { signal: AbortSignal.timeout(20000) }
+    );
+    if (!res.ok) return [];
+    const quotes = await res.json();
+    return quotes.map(q => ({
+      symbol:          q.symbol,
+      name:            q.name || q.symbol,
+      price:           q.price,
+      change:          q.change,
+      preMarketChange: q.preChange,
+      preMarketPrice:  q.prePrice,
+      currency:        q.currency || '',
+      marketState:     '',
+    }));
+  } catch (e) {
+    return [];
+  }
 }
 
 async function validateSymbol(symbol) {
   try {
-    const data = await fetchSymbolData(symbol);
-    if (data && data.price != null) {
-      return { valid: true, name: data.name, price: data.price, currency: data.currency };
+    const res = await fetch(
+      `/proxy/quotes?symbols=${encodeURIComponent(symbol)}`,
+      { signal: AbortSignal.timeout(15000) }
+    );
+    if (!res.ok) return { valid: false };
+    const quotes = await res.json();
+    const q = quotes[0];
+    if (q && q.price != null) {
+      return { valid: true, name: q.name || symbol, price: q.price, currency: q.currency || '' };
     }
     return { valid: false };
   } catch (e) {
@@ -1369,7 +1263,7 @@ function getAllAssets() {
     const prevClose = STATE.marketPrevClose[symbol] ?? null;
     const ytd = (prevClose != null && price != null)
       ? ((price - prevClose) / prevClose * 100)
-      : (STATE.ytdCache[symbol] ?? null);
+      : null;
     assets.push({
       symbol,
       name: meta.name,
@@ -1398,7 +1292,7 @@ function getAllAssets() {
       change: d.change ?? null,
       preChange: d.preMarketChange ?? null,
       time: null,
-      ytd: STATE.ytdCache[item.symbol] ?? null,
+      ytd: null,
       group: item.category === 'מעקב' ? 'watch' : item.category === 'מניות ישראל' ? 'il-stocks' : item.symbol.endsWith('=F') ? 'commodity' : 'watchlist',
       isWatchlist: true,
     });
@@ -1474,7 +1368,7 @@ function renderAll() { renderUnifiedTable(); }
 
 function renderCard(item) {
   const d = STATE.marketData[item.symbol] || {};
-  const ytd = STATE.ytdCache[item.symbol];
+  const ytd = null;
   const catClass = CONFIG.CAT_CLASS[item.category] || '';
 
   const card = document.createElement('div');
@@ -1556,11 +1450,21 @@ function escHtml(str) {
    REFRESH & COUNTDOWN
 ══════════════════════════════════════════════════════════════ */
 async function refreshQuotes() {
-  refreshMarket(); // refresh market panel data
-  const symbols = STATE.watchlist.map(i => i.symbol);
-  if (symbols.length === 0) { updateTimestamp(); return; }
+  refreshMarket(); // refresh market symbols (always)
+
+  // Only fetch watchlist symbols that are currently visible
+  const marketSymbols = new Set(Object.keys(MARKET_META));
+  const visibleSymbols = STATE.watchlist
+    .filter(i => {
+      if (marketSymbols.has(i.symbol)) return false; // already in /proxy/market
+      if (STATE.activeFilters.length === 0) return true;
+      return STATE.activeFilters.some(f => f === i.category || f === '__all__');
+    })
+    .map(i => i.symbol);
+
+  if (visibleSymbols.length === 0) { updateTimestamp(); return; }
   clearError();
-  const data = await fetchAllSymbols(symbols);
+  const data = await fetchAllSymbols(visibleSymbols);
   if (data.length === 0) {
     showError('שגיאת רשת — לא ניתן לעדכן נתונים. לחץ "רענן" לנסות שוב.');
     return;
@@ -1712,15 +1616,8 @@ async function handleSave() {
 
   // Fetch data for new symbol immediately
   try {
-    const [data, preData] = await Promise.all([
-      fetchSymbolData(symbol),
-      fetchPreMarketData(symbol),
-    ]);
-    if (data) {
-      if (preData) data.preMarketChange = preData.preMarketChange;
-      updateMarketData([data]);
-      renderUnifiedTable();
-    }
+    const quotes = await fetchAllSymbols([symbol]);
+    if (quotes.length > 0) { updateMarketData(quotes); renderUnifiedTable(); }
   } catch (e) { /* show anyway */ }
 }
 
@@ -1736,7 +1633,6 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
   const item = STATE.watchlist.find(i => i.symbol === symbol);
   if (item) removeItemFromFirestore(item.id); // onSnapshot updates STATE.watchlist
   delete STATE.marketData[symbol];
-  delete STATE.ytdCache[symbol];
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -2129,6 +2025,18 @@ function renderFilterBar() {
   sel.addEventListener('change', () => {
     STATE.activeFilters = sel.value === '__all__' ? [...CONFIG.CATEGORIES] : [sel.value];
     renderUnifiedTable();
+    // Fetch data for newly visible symbols that haven't been loaded yet
+    const marketSymbols = new Set(Object.keys(MARKET_META));
+    const missing = STATE.watchlist.filter(i => {
+      if (marketSymbols.has(i.symbol)) return false;
+      if (!STATE.activeFilters.includes(i.category)) return false;
+      return !STATE.marketData[i.symbol]?.price;
+    }).map(i => i.symbol);
+    if (missing.length > 0) {
+      fetchAllSymbols(missing).then(data => {
+        if (data.length > 0) { updateMarketData(data); renderUnifiedTable(); }
+      });
+    }
   });
 
   bar.appendChild(sel);
