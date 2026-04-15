@@ -873,6 +873,7 @@
     }
     .chart-symbol { font-size: 1.4rem; font-weight: 900; color: var(--text); direction: ltr; }
     .chart-name   { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+    .chart-current-price { font-size: 1.1rem; font-weight: 700; color: var(--text); direction: ltr; margin-top: 2px; }
     .chart-close  {
       background: none; border: none; font-size: 1.3rem;
       color: var(--text-muted); cursor: pointer;
@@ -987,6 +988,7 @@
       <div>
         <div class="chart-symbol" id="chart-symbol"></div>
         <div class="chart-name" id="chart-name"></div>
+        <div class="chart-current-price" id="chart-current-price"></div>
       </div>
       <button class="chart-close" id="chart-close">✕</button>
     </div>
@@ -1851,6 +1853,14 @@ async function openChartModal(symbol, name, interval, range) {
   document.getElementById('chart-overlay').classList.remove('hidden');
   document.getElementById('chart-symbol').textContent = symbol;
   document.getElementById('chart-name').textContent = name && name !== symbol ? name : '';
+  const _q = STATE.lastMarketQuotes.find(r => r.symbol === symbol) || {};
+  const _d = STATE.marketData[symbol] || {};
+  const _price = _q.price ?? _d.price ?? null;
+  const _change = _q.change ?? _d.change ?? null;
+  const _currency = _d.currency || '';
+  const _priceEl = document.getElementById('chart-current-price');
+  _priceEl.textContent = _price != null ? fmtPrice(_price, _currency) : '';
+  _priceEl.style.color = _change == null ? '' : _change >= 0 ? 'var(--up)' : 'var(--down)';
   document.getElementById('chart-stats').innerHTML = '<span class="chart-stat"><span class="spinner"></span> טוען...</span>';
 
   // Sync active button
