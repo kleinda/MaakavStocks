@@ -2007,7 +2007,7 @@ async function openChartModal(symbol, name, interval, range) {
         },
         scales: {
           x: { ticks: { color: tickColor, maxTicksLimit: maxTicks, maxRotation: 0 }, grid: { color: gridColor } },
-          y: { position: 'right', ticks: { color: tickColor, maxTicksLimit: 5, font: { size: 10 }, callback: v => v >= 1000 ? (v/1000).toFixed(1)+'K' : v }, grid: { color: gridColor } }
+          y: { position: 'right', ticks: { color: tickColor, maxTicksLimit: 5, font: { size: 10 }, callback: v => v >= 1000 ? (v/1000).toFixed(1)+'K' : parseFloat(v.toPrecision(6)) }, grid: { color: gridColor } }
         },
         interaction: { mode: 'index', intersect: false },
       }
