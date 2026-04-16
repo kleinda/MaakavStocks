@@ -1337,6 +1337,7 @@ function getAllAssets() {
 
 
 function renderUnifiedTable() {
+  if (STATE.activeFilters[0] === '__research__') return; // research mode manages its own table
   const tbody = document.getElementById('market-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
