@@ -1480,8 +1480,7 @@ function escHtml(str) {
 ══════════════════════════════════════════════════════════════ */
 async function refreshQuotes() {
   if (STATE.activeFilters[0] === '__research__') {
-    refreshMarket();
-    loadAndRenderResearch();
+    refreshMarket(); // רק שוק — מחקר לא מתרענן אוטומטית
     return;
   }
   refreshMarket(); // refresh market symbols (always)
@@ -2083,17 +2082,16 @@ async function loadAndRenderResearch() {
   // Update thead for research columns
   if (thead) thead.innerHTML = `<tr>
     <th>סמל</th><th>שם</th><th>שער</th>
-    <th>MA150</th><th>דוח</th>
-    <th class="research-col-recs">המלצות (30 יום)</th>
+    <th>MA150</th><th>דוח קרוב</th>
     <th class="research-col-news">חדשות (48 שע')</th>
   </tr>`;
 
   if (symbols.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa">אין מניות חול ברשימה — הוסף מניות חול כדי לראות מחקר</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:#aaa">אין מניות חול ברשימה — הוסף מניות חול כדי לראות מחקר</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</td></tr>`;
 
   try {
     const res = await fetch(
@@ -2129,26 +2127,16 @@ function renderResearchTable(dataArr) {
         : `<span class="badge-ma-below">▼ מתחת MA150 ${sign}${d.ma150Pct?.toFixed(1)}%</span>`;
     }
 
-    // Earnings badge
+    // Earnings badge (from Nasdaq calendar)
     let earnBadge = '—';
     if (d.earningsDate) {
       const days = d.daysToEarnings;
       const dateStr = new Date(d.earningsDate * 1000).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+      const timeStr = d.earningsTime === 'time-pre-market' ? ' לפני פתיחה' :
+                      d.earningsTime === 'time-after-hours' ? ' אחרי סגירה' : '';
       earnBadge = days <= 2
-        ? `<span class="badge-earnings">🔔 ${dateStr} (${days} ימים!)</span>`
-        : `<span style="font-size:0.82rem">${dateStr} (${days} ימים)</span>`;
-    }
-
-    // Upgrades/downgrades
-    let recsHtml = '—';
-    if (d.upgrades && d.upgrades.length > 0) {
-      recsHtml = d.upgrades.map(u => {
-        const isUp = ['up', 'upgrade', 'initiated', 'reiterated'].includes((u.action || '').toLowerCase());
-        const cls  = isUp ? 'badge-upgrade' : 'badge-downgrade';
-        const arrow = isUp ? '▲' : '▼';
-        const dateStr = u.date ? new Date(u.date * 1000).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) : '';
-        return `<span class="${cls}">${arrow} ${escHtml(u.firm)} → ${escHtml(u.toGrade)} <small>${dateStr}</small></span>`;
-      }).join('<br>');
+        ? `<span class="badge-earnings">🔔 ${dateStr}${timeStr} (${days} ימים!)</span>`
+        : `<span style="font-size:0.82rem">${dateStr}${timeStr}<br><small style="color:#aaa">${days} ימים</small></span>`;
     }
 
     // News
@@ -2161,14 +2149,11 @@ function renderResearchTable(dataArr) {
     if (d.daysToEarnings != null && d.daysToEarnings <= 2) tr.className = 'research-earnings-soon';
 
     tr.innerHTML = `
-      <td class="col-symbol" style="cursor:pointer">
-        <div>${escHtml(d.symbol)}</div>
-      </td>
+      <td class="col-symbol" style="cursor:pointer"><div>${escHtml(d.symbol)}</div></td>
       <td class="col-name" style="font-size:0.82rem">${escHtml(name)}</td>
       <td class="col-price" style="direction:ltr">${price != null ? fmtPrice(price, 'USD') : '—'}</td>
       <td>${maBadge}</td>
       <td>${earnBadge}</td>
-      <td class="research-col-recs">${recsHtml}</td>
       <td class="research-col-news">${newsHtml}</td>
     `;
     tr.addEventListener('click', () => openChartModal(d.symbol, name));
@@ -2176,7 +2161,7 @@ function renderResearchTable(dataArr) {
   });
 
   if (dataArr.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#aaa">אין נתוני מחקר</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#aaa">אין נתוני מחקר</td></tr>`;
   }
 }
 

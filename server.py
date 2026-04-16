@@ -73,19 +73,45 @@ def fetch_quote(symbol):
         "preChange": pre_change,
     }
 
+def fetch_nasdaq_earnings(symbols_set, days_ahead=21):
+    """Fetch earnings dates from Nasdaq calendar for the next N days."""
+    HDRS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json,text/plain,*/*'}
+    today = datetime.date.today()
+    result = {}  # symbol -> {date, daysToEarnings, time}
+    for i in range(days_ahead):
+        d = today + datetime.timedelta(days=i)
+        url = f"https://api.nasdaq.com/api/calendar/earnings?date={d}"
+        req = urllib.request.Request(url, headers=HDRS)
+        try:
+            with urllib.request.urlopen(req, timeout=8) as r:
+                data = json.loads(r.read())
+            rows = data.get("data", {}).get("rows") or []
+            for row in rows:
+                sym = row.get("symbol", "")
+                if sym in symbols_set and sym not in result:
+                    result[sym] = {
+                        "earningsDate":   int(datetime.datetime.combine(d, datetime.time()).timestamp()),
+                        "daysToEarnings": i,
+                        "earningsTime":   row.get("time", ""),
+                    }
+        except Exception:
+            pass
+    return result
+
+
 def fetch_research(symbol):
-    """Fetch research data for a US stock: MA150, earnings date, analyst upgrades, news."""
-    base1 = "https://query1.finance.yahoo.com"
+    """Fetch research data for a US stock: MA150, earnings date, news."""
     base2 = "https://query2.finance.yahoo.com"
     now_ts = int(datetime.datetime.utcnow().timestamp())
 
     result = {"symbol": symbol, "ma150": None, "price": None, "aboveMa150": None,
                "ma150Pct": None, "earningsDate": None, "daysToEarnings": None,
-               "upgrades": [], "news": []}
+               "earningsTime": None, "news": []}
 
-    # 1. 1-year daily history → MA150 + earnings timestamp
+    # 1. 1-year daily history → MA150
     try:
-        url = base1 + "/v8/finance/chart/" + symbol + "?interval=1d&range=1y"
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol + "?interval=1d&range=1y"
         req = urllib.request.Request(url, headers=HEADERS)
         with urllib.request.urlopen(req, timeout=12) as r:
             data = json.loads(r.read())
@@ -100,34 +126,10 @@ def fetch_research(symbol):
             if price:
                 result["aboveMa150"] = price > ma150
                 result["ma150Pct"]   = round((price - ma150) / ma150 * 100, 2)
-        # Earnings: prefer earningsTimestampStart (beginning of window)
-        earn_ts = meta.get("earningsTimestampStart") or meta.get("earningsTimestamp")
-        if earn_ts and earn_ts > now_ts:
-            result["earningsDate"]    = earn_ts
-            result["daysToEarnings"]  = (earn_ts - now_ts) // 86400
     except Exception:
         pass
 
-    # 2. Analyst upgrade/downgrade history (last 30 days)
-    try:
-        url = base1 + "/v10/finance/quoteSummary/" + symbol + "?modules=upgradeDowngradeHistory"
-        req = urllib.request.Request(url, headers=HEADERS)
-        with urllib.request.urlopen(req, timeout=10) as r:
-            data = json.loads(r.read())
-        history = (data.get("quoteSummary", {}).get("result", [{}])[0]
-                       .get("upgradeDowngradeHistory", {}).get("history", []))
-        cutoff = now_ts - 30 * 86400
-        recent = [h for h in history if h.get("epochGradeDate", 0) >= cutoff]
-        result["upgrades"] = [
-            {"firm": h.get("firm", ""), "action": h.get("action", ""),
-             "toGrade": h.get("toGrade", ""), "fromGrade": h.get("fromGrade", ""),
-             "date": h.get("epochGradeDate")}
-            for h in recent[:5]
-        ]
-    except Exception:
-        pass
-
-    # 3. News headlines (today / last 24h)
+    # 2. News headlines (last 48h)
     try:
         url = base2 + "/v1/finance/search?q=" + urllib.parse.quote(symbol) + "&newsCount=5&enableFuzzyQuery=false&quotesCount=0"
         req = urllib.request.Request(url, headers=HEADERS)
@@ -190,7 +192,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_error(502, 'Chart error: ' + str(e))
             return
 
-        # Research data — MA150, earnings, upgrades, news for US stocks
+        # Research data — MA150, earnings (Nasdaq), news for US stocks
         if parsed.path.startswith('/proxy/research'):
             params = dict(urllib.parse.parse_qsl(parsed.query))
             symbols_str = params.get('symbols', '')
@@ -199,13 +201,20 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_error(400, 'Missing symbols')
                 return
             try:
+                # Fetch earnings dates from Nasdaq for all symbols at once
+                earnings_map = fetch_nasdaq_earnings(set(symbols))
+
                 research_map = {}
                 with ThreadPoolExecutor(max_workers=min(len(symbols), 8)) as ex:
                     futures = {ex.submit(fetch_research, sym): sym for sym in symbols}
                     for fut in as_completed(futures, timeout=25):
                         sym = futures[fut]
                         try:
-                            research_map[sym] = fut.result()
+                            r = fut.result()
+                            # Merge earnings from Nasdaq
+                            if sym in earnings_map:
+                                r.update(earnings_map[sym])
+                            research_map[sym] = r
                         except Exception:
                             research_map[sym] = {"symbol": sym}
                 result = [research_map[sym] for sym in symbols if sym in research_map]
