@@ -681,7 +681,9 @@
       transition: color var(--transition);
     }
     .btn-remove-row:hover { color: #e53935; }
-    .col-btn { text-align: center; }
+    .btn-to-watch { background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 0.85rem; opacity: 0.4; transition: opacity 0.15s; }
+    .btn-to-watch:hover { opacity: 1; }
+    .col-btn { text-align: center; white-space: nowrap; }
 
     .market-cat-badge {
       display: inline-block;
@@ -1336,7 +1338,8 @@ function renderUnifiedTable() {
     const ytdCls    = ytdVal == null ? 'neutral' : (ytdVal >= 0 ? 'up' : 'down');
     const ytdTxt    = ytdVal != null ? ytdVal.toFixed(2) + '%' : '—';
     const removeBtn = asset.isWatchlist
-      ? `<button class="btn-remove-row" data-symbol="${escHtml(asset.symbol)}" title="הסר">✕</button>`
+      ? `<button class="btn-remove-row" data-symbol="${escHtml(asset.symbol)}" title="הסר">✕</button>` +
+        (asset.category !== 'מעקב' ? `<button class="btn-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>` : '')
       : '';
 
     const catShort = CONFIG.CAT_SHORT[asset.category] || asset.category;
@@ -1631,13 +1634,22 @@ async function handleSave() {
    REMOVE STOCK — event delegation on unified table
 ══════════════════════════════════════════════════════════════ */
 document.getElementById('market-tbody').addEventListener('click', function(e) {
+  // Move to watchlist
+  const watchBtn = e.target.closest('.btn-to-watch');
+  if (watchBtn) {
+    const symbol = watchBtn.dataset.symbol;
+    const item = STATE.watchlist.find(i => i.symbol === symbol);
+    if (item) watchlistCol.doc(item.id).update({ category: 'מעקב' });
+    return;
+  }
+  // Remove
   const btn = e.target.closest('.btn-remove-row');
   if (!btn) return;
   const symbol = btn.dataset.symbol;
   if (!symbol) return;
   if (!confirm(`הסר את ${symbol} מהרשימה?`)) return;
   const item = STATE.watchlist.find(i => i.symbol === symbol);
-  if (item) removeItemFromFirestore(item.id); // onSnapshot updates STATE.watchlist
+  if (item) removeItemFromFirestore(item.id);
   delete STATE.marketData[symbol];
 });
 
@@ -1948,21 +1960,42 @@ async function openChartModal(symbol, name, interval, range) {
     const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
     const maxTicks  = isIntraday ? 6 : 8;
 
+    // MA150 — only for ytd/1y ranges
+    const maPeriod = 150;
+    let ma150 = null;
+    if ((range === 'ytd' || range === '1y') && values.length >= maPeriod) {
+      ma150 = values.map((_, i) => {
+        if (i < maPeriod - 1) return null;
+        const slice = values.slice(i - maPeriod + 1, i + 1);
+        return slice.reduce((a, b) => a + b, 0) / maPeriod;
+      });
+    }
+
+    const datasets = [{
+      data: values,
+      borderColor: lineColor,
+      backgroundColor: lineColor + '22',
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: true,
+      tension: 0.3,
+    }];
+    if (ma150) datasets.push({
+      data: ma150,
+      borderColor: '#ff9800',
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [4, 3],
+      pointRadius: 0,
+      fill: false,
+      tension: 0.3,
+      label: 'MA150',
+    });
+
     const ctx = document.getElementById('chart-canvas').getContext('2d');
     _chartInstance = new Chart(ctx, {
       type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          borderColor: lineColor,
-          backgroundColor: lineColor + '22',
-          borderWidth: 2,
-          pointRadius: 0,
-          fill: true,
-          tension: 0.3,
-        }]
-      },
+      data: { labels, datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -1998,7 +2031,7 @@ document.getElementById('chart-ranges').addEventListener('click', function(e) {
 
 // Row click → open chart
 document.getElementById('market-tbody').addEventListener('click', function(e) {
-  if (e.target.closest('.btn-remove-row')) return;
+  if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch')) return;
   const tr = e.target.closest('tr.mrow');
   if (!tr) return;
   // renderMarketTable stores symbol/name in data attributes; renderUnifiedTable uses col-symbol
