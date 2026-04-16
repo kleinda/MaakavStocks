@@ -919,7 +919,7 @@
     body.dark .chart-range-btn.active { background: #1976d2; color: #fff; }
     body.dark .chart-range-btn[data-range="1d"] { color: #e8eaf6; }
     .chart-canvas-wrap { height: 280px; position: relative; }
-    @media (max-width: 480px) { .chart-canvas-wrap { height: 200px; } .chart-box { padding: 12px; gap: 8px; } .chart-name { display: none; } }
+    @media (max-width: 480px) { .chart-overlay { padding: 8px; } .chart-canvas-wrap { height: 200px; } .chart-box { padding: 12px; gap: 8px; } .chart-name { display: none; } }
   </style>
 </head>
 <body>
@@ -1966,7 +1966,7 @@ async function openChartModal(symbol, name, interval, range) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        layout: { padding: { right: 4 } },
+        layout: { padding: { right: 10 } },
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.parsed.y) } }
