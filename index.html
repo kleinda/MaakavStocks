@@ -871,10 +871,10 @@
       align-items: flex-start;
       justify-content: space-between;
     }
-    .chart-header-left { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-    .chart-symbol { font-size: 1.2rem; font-weight: 900; color: var(--text); direction: ltr; }
-    .chart-name   { font-size: 0.8rem; color: var(--text-muted); }
-    .chart-current-price { font-size: 1rem; font-weight: 700; direction: ltr; }
+    .chart-header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+    .chart-symbol { font-size: 1.1rem; font-weight: 900; color: var(--text); direction: ltr; white-space: nowrap; }
+    .chart-current-price { font-size: 0.95rem; font-weight: 700; direction: ltr; white-space: nowrap; }
+    .chart-name   { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .chart-close  {
       background: none; border: none; font-size: 1.3rem;
       color: var(--text-muted); cursor: pointer;
@@ -919,7 +919,7 @@
     body.dark .chart-range-btn.active { background: #1976d2; color: #fff; }
     body.dark .chart-range-btn[data-range="1d"] { color: #e8eaf6; }
     .chart-canvas-wrap { height: 280px; position: relative; }
-    @media (max-width: 480px) { .chart-canvas-wrap { height: 200px; } .chart-box { padding: 16px; gap: 10px; } }
+    @media (max-width: 480px) { .chart-canvas-wrap { height: 200px; } .chart-box { padding: 12px 8px; gap: 8px; } .chart-name { display: none; } }
   </style>
 </head>
 <body>
@@ -1972,7 +1972,7 @@ async function openChartModal(symbol, name, interval, range) {
         },
         scales: {
           x: { ticks: { color: tickColor, maxTicksLimit: maxTicks, maxRotation: 0 }, grid: { color: gridColor } },
-          y: { position: 'left', ticks: { color: tickColor, maxTicksLimit: 6 }, grid: { color: gridColor } }
+          y: { position: 'left', ticks: { color: tickColor, maxTicksLimit: 6, callback: v => v >= 1000 ? (v/1000).toFixed(1)+'K' : v }, grid: { color: gridColor } }
         },
         interaction: { mode: 'index', intersect: false },
       }
