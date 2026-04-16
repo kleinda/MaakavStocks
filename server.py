@@ -73,30 +73,41 @@ def fetch_quote(symbol):
         "preChange": pre_change,
     }
 
-def fetch_nasdaq_earnings(symbols_set, days_ahead=21):
-    """Fetch earnings dates from Nasdaq calendar for the next N days."""
+def _fetch_nasdaq_day(args):
+    """Fetch one day from Nasdaq earnings calendar."""
+    i, d, symbols_set = args
     HDRS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'application/json,text/plain,*/*'}
+    url = f"https://api.nasdaq.com/api/calendar/earnings?date={d}"
+    req = urllib.request.Request(url, headers=HDRS)
+    matches = {}
+    try:
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = json.loads(r.read())
+        rows = data.get("data", {}).get("rows") or []
+        for row in rows:
+            sym = row.get("symbol", "")
+            if sym in symbols_set:
+                matches[sym] = {
+                    "earningsDate":   int(datetime.datetime.combine(d, datetime.time()).timestamp()),
+                    "daysToEarnings": i,
+                    "earningsTime":   row.get("time", ""),
+                }
+    except Exception:
+        pass
+    return matches
+
+
+def fetch_nasdaq_earnings(symbols_set, days_ahead=21):
+    """Fetch earnings dates from Nasdaq calendar — parallel requests."""
     today = datetime.date.today()
-    result = {}  # symbol -> {date, daysToEarnings, time}
-    for i in range(days_ahead):
-        d = today + datetime.timedelta(days=i)
-        url = f"https://api.nasdaq.com/api/calendar/earnings?date={d}"
-        req = urllib.request.Request(url, headers=HDRS)
-        try:
-            with urllib.request.urlopen(req, timeout=8) as r:
-                data = json.loads(r.read())
-            rows = data.get("data", {}).get("rows") or []
-            for row in rows:
-                sym = row.get("symbol", "")
-                if sym in symbols_set and sym not in result:
-                    result[sym] = {
-                        "earningsDate":   int(datetime.datetime.combine(d, datetime.time()).timestamp()),
-                        "daysToEarnings": i,
-                        "earningsTime":   row.get("time", ""),
-                    }
-        except Exception:
-            pass
+    days = [(i, today + datetime.timedelta(days=i), symbols_set) for i in range(days_ahead)]
+    result = {}
+    with ThreadPoolExecutor(max_workers=7) as ex:
+        for matches in ex.map(_fetch_nasdaq_day, days, timeout=15):
+            for sym, val in matches.items():
+                if sym not in result:
+                    result[sym] = val
     return result
 
 

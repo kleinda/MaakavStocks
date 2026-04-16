@@ -2074,7 +2074,7 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
 ══════════════════════════════════════════════════════════════ */
 async function loadAndRenderResearch() {
   const symbols = STATE.watchlist
-    .filter(i => i.category === 'מניות חול')
+    .filter(i => i.category === 'מניות חול' || i.category === 'מעקב')
     .map(i => i.symbol);
 
   const tbody = document.getElementById('market-tbody');
@@ -2088,7 +2088,7 @@ async function loadAndRenderResearch() {
   </tr>`;
 
   if (symbols.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:#aaa">אין מניות חול ברשימה — הוסף מניות חול כדי לראות מחקר</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:#aaa">אין מניות חול או מעקב ברשימה</td></tr>`;
     return;
   }
 
