@@ -919,7 +919,7 @@
     body.dark .chart-range-btn.active { background: #1976d2; color: #fff; }
     body.dark .chart-range-btn[data-range="1d"] { color: #e8eaf6; }
     .chart-canvas-wrap { height: 280px; position: relative; }
-    @media (max-width: 480px) { .chart-canvas-wrap { height: 200px; } .chart-box { padding: 12px 8px; gap: 8px; } .chart-name { display: none; } }
+    @media (max-width: 480px) { .chart-canvas-wrap { height: 200px; } .chart-box { padding: 12px 12px 12px 4px; gap: 8px; } .chart-name { display: none; } }
   </style>
 </head>
 <body>
@@ -1966,13 +1966,14 @@ async function openChartModal(symbol, name, interval, range) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { left: 8 } },
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.parsed.y) } }
         },
         scales: {
           x: { ticks: { color: tickColor, maxTicksLimit: maxTicks, maxRotation: 0 }, grid: { color: gridColor } },
-          y: { position: 'left', ticks: { color: tickColor, maxTicksLimit: 6, callback: v => v >= 1000 ? (v/1000).toFixed(1)+'K' : v }, grid: { color: gridColor } }
+          y: { position: 'left', ticks: { color: tickColor, maxTicksLimit: 5, font: { size: 10 }, callback: v => v >= 1000 ? (v/1000).toFixed(1)+'K' : v }, grid: { color: gridColor } }
         },
         interaction: { mode: 'index', intersect: false },
       }
