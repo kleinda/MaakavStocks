@@ -1638,6 +1638,7 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
   const watchBtn = e.target.closest('.btn-to-watch');
   if (watchBtn) {
     const symbol = watchBtn.dataset.symbol;
+    if (!confirm(`להעביר את ${symbol} לרשימת מעקב?`)) return;
     const item = STATE.watchlist.find(i => i.symbol === symbol);
     if (item) watchlistCol.doc(item.id).update({ category: 'מעקב' });
     return;
