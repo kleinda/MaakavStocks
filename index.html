@@ -871,9 +871,10 @@
       align-items: flex-start;
       justify-content: space-between;
     }
-    .chart-symbol { font-size: 1.4rem; font-weight: 900; color: var(--text); direction: ltr; }
-    .chart-name   { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
-    .chart-current-price { font-size: 1.1rem; font-weight: 700; color: var(--text); direction: ltr; margin-top: 2px; }
+    .chart-header-left { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .chart-symbol { font-size: 1.2rem; font-weight: 900; color: var(--text); direction: ltr; }
+    .chart-name   { font-size: 0.8rem; color: var(--text-muted); }
+    .chart-current-price { font-size: 1rem; font-weight: 700; direction: ltr; }
     .chart-close  {
       background: none; border: none; font-size: 1.3rem;
       color: var(--text-muted); cursor: pointer;
@@ -911,9 +912,12 @@
     }
     .chart-range-btn:hover { background: rgba(0,0,0,0.12); }
     .chart-range-btn.active { background: #1976d2; color: #fff; }
+    .chart-range-btn[data-range="1d"] { font-size: 0.95rem; padding: 6px 16px; color: var(--text); }
+    .chart-range-btn[data-range="1d"].active { background: #1565c0; }
     body.dark .chart-range-btn { background: rgba(255,255,255,0.08); }
     body.dark .chart-range-btn:hover { background: rgba(255,255,255,0.15); }
     body.dark .chart-range-btn.active { background: #1976d2; color: #fff; }
+    body.dark .chart-range-btn[data-range="1d"] { color: #e8eaf6; }
     .chart-canvas-wrap { height: 280px; position: relative; }
     @media (max-width: 480px) { .chart-canvas-wrap { height: 200px; } .chart-box { padding: 16px; gap: 10px; } }
   </style>
@@ -985,10 +989,10 @@
 <div class="chart-overlay hidden" id="chart-overlay">
   <div class="chart-box">
     <div class="chart-header">
-      <div>
+      <div class="chart-header-left">
         <div class="chart-symbol" id="chart-symbol"></div>
-        <div class="chart-name" id="chart-name"></div>
         <div class="chart-current-price" id="chart-current-price"></div>
+        <div class="chart-name" id="chart-name"></div>
       </div>
       <button class="chart-close" id="chart-close">✕</button>
     </div>
@@ -1710,6 +1714,8 @@ function renderMarketTable(quotes) {
 
     const tr = document.createElement('tr');
     tr.className = `mrow mrow-${meta.group}`;
+    tr.dataset.symbol = q.symbol;
+    tr.dataset.name   = meta.name;
     tr.innerHTML = `
       <td class="col-time">${fmtMarketTime(q.time)}</td>
       <td class="col-name">${escHtml(meta.name)}</td>
@@ -1717,7 +1723,7 @@ function renderMarketTable(quotes) {
       <td class="col-price">${fmtMarketPrice(q.price, q.symbol)}</td>
       <td class="col-change ${change.cls}">${change.text}</td>
       <td class="col-pre ${pre.cls}">${pre.text}</td>
-      <td class="col-btn"><button class="btn-expand">▼</button></td>
+      <td class="col-btn" style="color:var(--text-muted);font-size:0.85rem;opacity:0.5">📈</td>
     `;
     tbody.appendChild(tr);
   });
@@ -1928,12 +1934,12 @@ async function openChartModal(symbol, name, interval, range) {
     const lineColor = isUp ? '#1b8a3c' : '#c62828';
     const fmt = v => v.toLocaleString('en-US', { maximumFractionDigits: 2 });
 
-    const rangeLabel = { '1d':'היום', '5d':'5 ימים', '1mo':'חודש', 'ytd':'מתחילת השנה', '1y':'שנה' }[range] || range;
+    const rangeLabel = { '1d':'היום', '5d':'5D', '1mo':'1M', 'ytd':'YTD', '1y':'1Y' }[range] || range;
     const hiLoLabel  = range === '1y' ? '52W' : rangeLabel;
 
     document.getElementById('chart-stats').innerHTML = `
-      <span class="chart-stat">${hiLoLabel} גבוה: <strong style="color:#1b8a3c">${fmt(maxVal)}</strong></span>
-      <span class="chart-stat">${hiLoLabel} נמוך: <strong style="color:#c62828">${fmt(minVal)}</strong></span>
+      <span class="chart-stat">גבוה: <strong style="color:#1b8a3c">${fmt(maxVal)}</strong></span>
+      <span class="chart-stat">נמוך: <strong style="color:#c62828">${fmt(minVal)}</strong></span>
       <span class="chart-stat">${rangeLabel}: <strong style="color:${lineColor}">${isUp?'+':''}${chgPct.toFixed(2)}%</strong></span>
     `;
 
@@ -1994,10 +2000,9 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
   if (e.target.closest('.btn-remove-row')) return;
   const tr = e.target.closest('tr.mrow');
   if (!tr) return;
-  const symbolEl = tr.querySelector('.col-symbol div');
-  const nameEl   = tr.querySelector('.col-name');
-  const symbol   = symbolEl?.textContent?.trim();
-  const name     = nameEl?.textContent?.trim();
+  // renderMarketTable stores symbol/name in data attributes; renderUnifiedTable uses col-symbol
+  const symbol = tr.dataset.symbol || tr.querySelector('.col-symbol div')?.textContent?.trim();
+  const name   = tr.dataset.name   || tr.querySelector('.col-name')?.textContent?.trim();
   if (symbol) openChartModal(symbol, name);
 });
 
