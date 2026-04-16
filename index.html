@@ -876,6 +876,24 @@
     .chart-header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: nowrap; min-width: 0; }
     .chart-symbol { font-size: 1.1rem; font-weight: 900; color: var(--text); direction: ltr; white-space: nowrap; }
     .chart-current-price { font-size: 0.95rem; font-weight: 700; direction: ltr; white-space: nowrap; }
+    /* ── Research table ───────────────────────── */
+    .research-earnings-soon td { background: #fff3e0 !important; }
+    body.dark .research-earnings-soon td { background: #2a1800 !important; }
+    .badge-ma-above  { background: #e8f5e9; color: #1b5e20; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+    .badge-ma-below  { background: #ffebee; color: #b71c1c; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+    .badge-upgrade   { background: #e3f2fd; color: #0d47a1; border-radius: 6px; padding: 2px 7px; font-size: 0.75rem; }
+    .badge-downgrade { background: #fce4ec; color: #880e4f; border-radius: 6px; padding: 2px 7px; font-size: 0.75rem; }
+    .badge-earnings  { background: #fff8e1; color: #e65100; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; }
+    body.dark .badge-ma-above  { background: #1b3a1f; color: #81c784; }
+    body.dark .badge-ma-below  { background: #3a1a1a; color: #ef9a9a; }
+    body.dark .badge-upgrade   { background: #0d2035; color: #90caf9; }
+    body.dark .badge-downgrade { background: #2a0d1a; color: #f48fb1; }
+    body.dark .badge-earnings  { background: #2a2000; color: #ffcc80; }
+    .research-news-title { font-size: 0.78rem; color: var(--text-muted); display: block; line-height: 1.35; }
+    .research-news-title:not(:last-child) { margin-bottom: 3px; }
+    .research-col-news { max-width: 220px; }
+    .research-col-recs { max-width: 180px; }
+    .research-col-recs .badge-upgrade, .research-col-recs .badge-downgrade { display: inline-block; margin: 1px 0; }
     .chart-name   { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .chart-close  {
       background: none; border: none; font-size: 1.3rem;
@@ -959,7 +977,7 @@
 <section class="panel-market">
   <div class="market-table-scroll">
     <table class="market-table">
-      <thead>
+      <thead id="market-thead">
         <tr>
           <th data-col="time">Time</th>
           <th data-col="symbol">Symbol</th>
@@ -1121,6 +1139,8 @@ const STATE = {
   countdownTimer: null,
   isLoading:  false,
   activeFilters: ['מדדים ותעודות סל'],
+  researchData: {},       // { AAPL: { ma150, aboveMa150, earningsDate, upgrades, news } }
+  researchLoading: false,
   lastMarketQuotes: [],
   marketPrevClose: {},  // { symbol: Dec31close } — fetched once per session for YTD calc
   sort: { col: null, dir: 'asc' },
@@ -1459,6 +1479,11 @@ function escHtml(str) {
    REFRESH & COUNTDOWN
 ══════════════════════════════════════════════════════════════ */
 async function refreshQuotes() {
+  if (STATE.activeFilters[0] === '__research__') {
+    refreshMarket();
+    loadAndRenderResearch();
+    return;
+  }
   refreshMarket(); // refresh market symbols (always)
 
   // Only fetch watchlist symbols that are currently visible
@@ -2044,6 +2069,135 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
 /* ══════════════════════════════════════════════════════════════
    FILTER BAR
 ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   RESEARCH
+══════════════════════════════════════════════════════════════ */
+async function loadAndRenderResearch() {
+  const symbols = STATE.watchlist
+    .filter(i => i.category === 'מניות חול')
+    .map(i => i.symbol);
+
+  const tbody = document.getElementById('market-tbody');
+  const thead = document.getElementById('market-thead');
+
+  // Update thead for research columns
+  if (thead) thead.innerHTML = `<tr>
+    <th>סמל</th><th>שם</th><th>שער</th>
+    <th>MA150</th><th>דוח</th>
+    <th class="research-col-recs">המלצות (30 יום)</th>
+    <th class="research-col-news">חדשות (48 שע')</th>
+  </tr>`;
+
+  if (symbols.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa">אין מניות חול ברשימה — הוסף מניות חול כדי לראות מחקר</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</td></tr>`;
+
+  try {
+    const res = await fetch(
+      `/proxy/research?symbols=${symbols.map(encodeURIComponent).join(',')}`,
+      { signal: AbortSignal.timeout(30000) }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    data.forEach(d => { STATE.researchData[d.symbol] = d; });
+    renderResearchTable(data);
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#e53935">שגיאה בטעינת נתוני מחקר: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function renderResearchTable(dataArr) {
+  const tbody = document.getElementById('market-tbody');
+  tbody.innerHTML = '';
+  const now = Date.now() / 1000;
+
+  dataArr.forEach(d => {
+    const item = STATE.watchlist.find(i => i.symbol === d.symbol) || {};
+    const mktD = STATE.marketData[d.symbol] || {};
+    const price = mktD.price ?? d.price;
+    const name  = mktD.name || d.symbol;
+
+    // MA150 badge
+    let maBadge = '—';
+    if (d.ma150 != null) {
+      const sign = d.ma150Pct >= 0 ? '+' : '';
+      maBadge = d.aboveMa150
+        ? `<span class="badge-ma-above">▲ מעל MA150 ${sign}${d.ma150Pct?.toFixed(1)}%</span>`
+        : `<span class="badge-ma-below">▼ מתחת MA150 ${sign}${d.ma150Pct?.toFixed(1)}%</span>`;
+    }
+
+    // Earnings badge
+    let earnBadge = '—';
+    if (d.earningsDate) {
+      const days = d.daysToEarnings;
+      const dateStr = new Date(d.earningsDate * 1000).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+      earnBadge = days <= 2
+        ? `<span class="badge-earnings">🔔 ${dateStr} (${days} ימים!)</span>`
+        : `<span style="font-size:0.82rem">${dateStr} (${days} ימים)</span>`;
+    }
+
+    // Upgrades/downgrades
+    let recsHtml = '—';
+    if (d.upgrades && d.upgrades.length > 0) {
+      recsHtml = d.upgrades.map(u => {
+        const isUp = ['up', 'upgrade', 'initiated', 'reiterated'].includes((u.action || '').toLowerCase());
+        const cls  = isUp ? 'badge-upgrade' : 'badge-downgrade';
+        const arrow = isUp ? '▲' : '▼';
+        const dateStr = u.date ? new Date(u.date * 1000).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) : '';
+        return `<span class="${cls}">${arrow} ${escHtml(u.firm)} → ${escHtml(u.toGrade)} <small>${dateStr}</small></span>`;
+      }).join('<br>');
+    }
+
+    // News
+    let newsHtml = '—';
+    if (d.news && d.news.length > 0) {
+      newsHtml = d.news.map(n => `<span class="research-news-title">• ${escHtml(n.title)}</span>`).join('');
+    }
+
+    const tr = document.createElement('tr');
+    if (d.daysToEarnings != null && d.daysToEarnings <= 2) tr.className = 'research-earnings-soon';
+
+    tr.innerHTML = `
+      <td class="col-symbol" style="cursor:pointer">
+        <div>${escHtml(d.symbol)}</div>
+      </td>
+      <td class="col-name" style="font-size:0.82rem">${escHtml(name)}</td>
+      <td class="col-price" style="direction:ltr">${price != null ? fmtPrice(price, 'USD') : '—'}</td>
+      <td>${maBadge}</td>
+      <td>${earnBadge}</td>
+      <td class="research-col-recs">${recsHtml}</td>
+      <td class="research-col-news">${newsHtml}</td>
+    `;
+    tr.addEventListener('click', () => openChartModal(d.symbol, name));
+    tbody.appendChild(tr);
+  });
+
+  if (dataArr.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#aaa">אין נתוני מחקר</td></tr>`;
+  }
+}
+
+function restoreStandardThead() {
+  const thead = document.getElementById('market-thead');
+  if (thead) thead.innerHTML = `
+    <tr>
+      <th class="col-time" data-col="time">זמן</th>
+      <th class="col-symbol" data-col="symbol">סמל</th>
+      <th class="col-name" data-col="name" style="display:none">שם</th>
+      <th class="col-cat" data-col="category">קטגוריה</th>
+      <th class="col-price" data-col="price">שער</th>
+      <th class="col-break"></th>
+      <th class="col-change" data-col="change">% יום</th>
+      <th class="col-pre" data-col="pre">טרום</th>
+      <th class="col-ytd" data-col="ytd">Ytd</th>
+      <th class="col-btn"></th>
+    </tr>`;
+  initSortHeaders();
+}
+
 function renderFilterBar() {
   const bar = document.getElementById('filter-bar');
   if (!bar) return;
@@ -2072,7 +2226,21 @@ function renderFilterBar() {
     sel.appendChild(opt);
   });
 
+  // Research option
+  const resOpt = document.createElement('option');
+  resOpt.value = '__research__';
+  resOpt.textContent = '🔬 מחקר';
+  if (STATE.activeFilters[0] === '__research__') resOpt.selected = true;
+  sel.appendChild(resOpt);
+
   sel.addEventListener('change', () => {
+    if (sel.value === '__research__') {
+      STATE.activeFilters = ['__research__'];
+      loadAndRenderResearch();
+      return;
+    }
+    // Restore standard thead if coming from research mode
+    if (STATE.activeFilters[0] === '__research__') restoreStandardThead();
     STATE.activeFilters = sel.value === '__all__' ? [...CONFIG.CATEGORIES] : [sel.value];
     renderUnifiedTable();
     // Fetch data for newly visible symbols that haven't been loaded yet
