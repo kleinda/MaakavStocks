@@ -750,6 +750,10 @@
       margin-right: 6px;
     }
     .jump-bar .filter-select { max-width: 140px; }
+    @media (max-width: 768px) {
+      .jump-bar { flex-basis: 100%; margin-right: 0; }
+      .jump-bar .filter-select { max-width: 100%; flex: 1; }
+    }
 
     /* ── Summary bar ─────────────────────────────────────────── */
     .summary-bar {
@@ -2582,12 +2586,23 @@ function updateJumpBar(symbols) {
   sel.onchange = () => {
     const sym = sel.value;
     if (!sym) return;
-    // Try card first (mobile), then table row (desktop)
+
+    // Find element in whichever container is visible
     const card = document.querySelector(`.rc[data-symbol="${CSS.escape(sym)}"]`);
     const tr   = document.querySelector(`tr[data-sym-jump="${CSS.escape(sym)}"]`);
     const el   = card || tr;
+
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Scroll the overflow container, not the page
+      const scrollContainer = el.closest('#research-cards, .market-table-scroll');
+      if (scrollContainer) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const elRect        = el.getBoundingClientRect();
+        const offset        = elRect.top - containerRect.top + scrollContainer.scrollTop - 60;
+        scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
+      } else {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       el.style.outline = '2px solid #1976d2';
       setTimeout(() => { el.style.outline = ''; }, 1800);
     }
