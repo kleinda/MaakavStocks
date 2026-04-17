@@ -549,9 +549,10 @@
 
       /* Controls row — two compact selects on one line */
       .controls-row { padding: 4px 8px; gap: 5px; flex-wrap: nowrap; align-items: center; }
-      .filter-bar { flex-shrink: 0; gap: 4px; }
+      .filter-bar { flex: 0 0 auto; max-width: 48%; gap: 4px; }
       .filter-label { display: none; }
-      .filter-select { font-size: 0.78rem; padding: 3px 4px; max-width: 90px; }
+      .filter-select { font-size: 0.78rem; padding: 3px 4px; min-width: 0 !important; max-width: 100%; width: 100%; }
+      .filter-bar .filter-select { width: 120px; max-width: 120px; }
       .jump-bar { flex: 1; min-width: 0; margin-right: 0; }
       .jump-bar .filter-select { max-width: 100%; width: 100%; }
 
@@ -764,7 +765,6 @@
     }
     .jump-bar .filter-select { max-width: 140px; }
     @media (max-width: 768px) {
-      .jump-bar { flex-basis: 100%; margin-right: 0; }
       .jump-bar .filter-select { max-width: 100%; flex: 1; }
     }
 
@@ -1466,7 +1466,8 @@ function renderUnifiedTable() {
     const ytdTxt    = ytdVal != null ? ytdVal.toFixed(2) + '%' : '—';
     const removeBtn = asset.isWatchlist
       ? `<button class="btn-remove-row" data-symbol="${escHtml(asset.symbol)}" title="הסר">✕</button>` +
-        (asset.category !== 'מעקב' ? `<button class="btn-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>` : '')
+        (asset.category !== 'מעקב' ? `<button class="btn-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>` : '') +
+        (asset.category === 'מעקב' ? `<button class="btn-to-watch btn-to-stocks" data-symbol="${escHtml(asset.symbol)}" title="העבר למניות חול">🏢</button>` : '')
       : '';
 
     const catShort = CONFIG.CAT_SHORT[asset.category] || asset.category;
@@ -1765,8 +1766,17 @@ async function handleSave() {
    REMOVE STOCK — event delegation on unified table
 ══════════════════════════════════════════════════════════════ */
 document.getElementById('market-tbody').addEventListener('click', function(e) {
-  // Move to watchlist
-  const watchBtn = e.target.closest('.btn-to-watch');
+  // Move to מניות חול (from מעקב)
+  const stocksBtn = e.target.closest('.btn-to-stocks');
+  if (stocksBtn) {
+    const symbol = stocksBtn.dataset.symbol;
+    if (!confirm(`להעביר את ${symbol} למניות חול?`)) return;
+    const item = STATE.watchlist.find(i => i.symbol === symbol);
+    if (item) watchlistCol.doc(item.id).update({ category: 'מניות חול' });
+    return;
+  }
+  // Move to מעקב
+  const watchBtn = e.target.closest('.btn-to-watch:not(.btn-to-stocks)');
   if (watchBtn) {
     const symbol = watchBtn.dataset.symbol;
     if (!confirm(`להעביר את ${symbol} לרשימת מעקב?`)) return;
@@ -2271,12 +2281,7 @@ function _buildResearchBadges(d) {
 }
 
 function renderResearchTable(dataArr) {
-  const sorted = [...dataArr].sort((a, b) => {
-    if (a.daysToEarnings == null && b.daysToEarnings == null) return 0;
-    if (a.daysToEarnings == null) return 1;
-    if (b.daysToEarnings == null) return -1;
-    return a.daysToEarnings - b.daysToEarnings;
-  });
+  const sorted = [...dataArr].sort((a, b) => a.symbol.localeCompare(b.symbol));
   _renderResearchTableDesktop(sorted);
   _renderResearchCards(sorted);
   updateJumpBar(sorted.map(d => d.symbol));
@@ -2604,15 +2609,7 @@ function updateJumpBar(symbols) {
     const el = document.getElementById('rrow-' + sym);
     if (!el) return;
 
-    const scroller = document.getElementById('research-cards');
-    const tableWrap = document.getElementById('market-table-wrap');
-    const useScroller = (scroller && getComputedStyle(scroller).display !== 'none') ? scroller : tableWrap;
-
-    if (useScroller) {
-      const cRect = useScroller.getBoundingClientRect();
-      const eRect = el.getBoundingClientRect();
-      useScroller.scrollTo({ top: useScroller.scrollTop + eRect.top - cRect.top - 8, behavior: 'smooth' });
-    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     el.style.outline = '3px solid #1976d2';
     setTimeout(() => { el.style.outline = ''; }, 2000);
