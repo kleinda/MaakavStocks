@@ -591,24 +591,24 @@
 
     /* ── Research mode: override mobile flex-table ── */
     @media (max-width: 480px) {
-      /* Restore proper table display — research is scrollable, not flex */
-      .market-table.research-mode,
-      .market-table.research-mode tbody { display: table; width: 100%; }
-      .market-table.research-mode thead { display: table-header-group !important; }
-      .market-table.research-mode tr   { display: table-row; }
+      /* Force proper table layout — overrides the block/flex from above */
+      .market-table.research-mode          { display: table !important; width: 100% !important; }
+      .market-table.research-mode tbody    { display: table-row-group !important; }
+      .market-table.research-mode thead    { display: table-header-group !important; }
+      .market-table.research-mode tr       { display: table-row !important; flex-wrap: unset !important; padding: 0 !important; }
       .market-table.research-mode td,
-      .market-table.research-mode th   { display: table-cell; }
-      /* Tighter column widths on small screens */
-      .market-table.research-mode .col-research-sym { width: 72px; min-width: 60px; }
-      .market-table.research-mode .col-price        { width: 62px; }
-      .market-table.research-mode .col-research-ma  { width: 100px; }
-      .market-table.research-mode .col-research-earn{ width: 88px; }
-      /* Hide news column on mobile — too wide, read in AI summary */
-      .market-table.research-mode .col-research-news { display: none; }
-      /* AI summary: wrap text naturally */
-      .ai-summary-cell { white-space: normal; }
-      /* Compact AI button col */
-      .market-table.research-mode .col-research-ai { width: 38px; }
+      .market-table.research-mode th       { display: table-cell !important; white-space: normal !important; padding: 6px 6px !important; border: none; }
+      /* Tighter column widths */
+      .market-table.research-mode .col-research-sym { width: 68px !important; min-width: 0 !important; font-size: 0.8rem; }
+      .market-table.research-mode .col-price        { width: 58px !important; font-size: 0.8rem; }
+      .market-table.research-mode .col-research-ma  { width: 90px !important; font-size: 0.75rem; }
+      .market-table.research-mode .col-research-earn{ width: 80px !important; font-size: 0.75rem; }
+      /* Hide news on mobile — AI summary covers it */
+      .market-table.research-mode .col-research-news { display: none !important; }
+      /* Keep AI button column */
+      .market-table.research-mode .col-research-ai  { width: 36px !important; text-align: center !important; }
+      /* AI summary row */
+      .ai-summary-cell { white-space: normal !important; font-size: 0.8rem; padding: 8px 10px !important; }
     }
 
     /* ── Market Panel ────────────────────────────────────────── */
