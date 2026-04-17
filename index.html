@@ -929,8 +929,13 @@
     body.dark .ai-summary-cell { background: #0d1a2e; color: #90caf9; border-right-color: #3f51b5; }
     .ai-label { font-weight: 700; margin-left: 8px; }
     .ai-date  { font-size: 0.75rem; color: var(--text-muted); margin-left: 6px; }
-    /* Research cards (mobile) */
-    #research-cards { padding: 6px 8px; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 0; }
+    /* Research cards — hidden by default, shown only in mobile research mode */
+    #research-cards { display: none; padding: 6px 8px; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 0; }
+    /* In research mode on mobile: show cards, hide table */
+    @media (max-width: 600px) {
+      .research-mode-active #market-table-wrap { display: none !important; }
+      .research-mode-active #research-cards    { display: flex !important; }
+    }
     .rc { background: var(--bg-card, #fff); border: 1px solid #e0e0e0; border-radius: 10px;
           padding: 10px 12px; }
     body.dark .rc { background: #1a2035; border-color: #2d3748; }
@@ -1045,7 +1050,7 @@
 
 <!-- ── Market Panel ──────────────────────────────────────────── -->
 <section class="panel-market">
-  <div class="market-table-scroll" id="market-table-wrap" style="flex:1;min-height:0">
+  <div class="market-table-scroll" id="market-table-wrap">
     <table class="market-table">
       <thead id="market-thead">
         <tr>
@@ -1066,7 +1071,7 @@
       </tbody>
     </table>
   </div>
-  <div id="research-cards" style="display:none"></div>
+  <div id="research-cards"></div>
   <div class="market-footer">עודכן: <span id="market-updated">—</span></div>
 </section>
 
@@ -2153,50 +2158,39 @@ document.getElementById('research-cards').addEventListener('click', function(e) 
 /* ══════════════════════════════════════════════════════════════
    RESEARCH
 ══════════════════════════════════════════════════════════════ */
-function isMobileResearch() { return window.innerWidth <= 600; }
-
 async function loadAndRenderResearch() {
   const symbols = STATE.watchlist
     .filter(i => i.category === 'מניות חול' || i.category === 'מעקב')
     .map(i => i.symbol);
 
-  const mobile = isMobileResearch();
-  const wrap   = document.getElementById('market-table-wrap');
+  const panel  = document.querySelector('.panel-market');
   const cards  = document.getElementById('research-cards');
   const tbody  = document.getElementById('market-tbody');
   const thead  = document.getElementById('market-thead');
 
-  if (mobile) {
-    // Cards mode: hide table, show cards container
-    wrap.style.display  = 'none';
-    cards.style.display = 'flex';
-    cards.innerHTML = `<div style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</div>`;
-  } else {
-    // Table mode
-    wrap.style.display  = '';
-    cards.style.display = 'none';
-    document.querySelector('.market-table')?.classList.add('research-mode');
-    if (thead) {
-      thead.innerHTML = `<tr>
-        <th class="col-research-sym">סמל / שם</th>
-        <th class="col-price">שער</th>
-        <th class="col-research-ma">MA150</th>
-        <th class="col-research-earn">דוח קרוב</th>
-        <th class="col-research-news">חדשות (48 שע')</th>
-        <th class="col-research-ai" style="width:84px;text-align:center">
-          <button class="btn-ai-all" id="btn-ai-all">🤖 הכל</button>
-        </th>
-      </tr>`;
-      document.getElementById('btn-ai-all').addEventListener('click', fetchAllAI);
-    }
-    if (symbols.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa">אין מניות חול או מעקב ברשימה</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען...</td></tr>`;
+  // Always activate research mode — CSS handles table vs cards by screen width
+  panel?.classList.add('research-mode-active');
+  document.querySelector('.market-table')?.classList.add('research-mode');
+
+  // Desktop thead + spinner
+  if (thead) {
+    thead.innerHTML = `<tr>
+      <th class="col-research-sym">סמל / שם</th>
+      <th class="col-price">שער</th>
+      <th class="col-research-ma">MA150</th>
+      <th class="col-research-earn">דוח קרוב</th>
+      <th class="col-research-news">חדשות (48 שע')</th>
+      <th class="col-research-ai" style="width:84px;text-align:center">
+        <button class="btn-ai-all" id="btn-ai-all">🤖 הכל</button>
+      </th>
+    </tr>`;
+    document.getElementById('btn-ai-all')?.addEventListener('click', fetchAllAI);
   }
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען...</td></tr>`;
+  cards.innerHTML = `<div style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</div>`;
 
   if (symbols.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa">אין מניות חול או מעקב ברשימה</td></tr>`;
     cards.innerHTML = `<div style="text-align:center;padding:24px;color:#aaa">אין מניות חול או מעקב ברשימה</div>`;
     return;
   }
@@ -2214,9 +2208,9 @@ async function loadAndRenderResearch() {
     data.forEach(d => { STATE.researchData[d.symbol] = d; });
     renderResearchTable(data);
   } catch(e) {
-    const msg = `<div style="text-align:center;padding:20px;color:#e53935">שגיאה: ${escHtml(e.message)}</div>`;
-    if (mobile) cards.innerHTML = msg;
-    else tbody.innerHTML = `<tr><td colspan="7">${msg}</td></tr>`;
+    const msg = `שגיאה: ${escHtml(e.message)}`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#e53935">${msg}</td></tr>`;
+    cards.innerHTML = `<div style="text-align:center;padding:20px;color:#e53935">${msg}</div>`;
   }
 }
 
@@ -2248,19 +2242,15 @@ function _buildResearchBadges(d) {
 }
 
 function renderResearchTable(dataArr) {
-  // Sort: earnings soonest first
   const sorted = [...dataArr].sort((a, b) => {
     if (a.daysToEarnings == null && b.daysToEarnings == null) return 0;
     if (a.daysToEarnings == null) return 1;
     if (b.daysToEarnings == null) return -1;
     return a.daysToEarnings - b.daysToEarnings;
   });
-
-  if (isMobileResearch()) {
-    _renderResearchCards(sorted);
-  } else {
-    _renderResearchTableDesktop(sorted);
-  }
+  // Always render both — CSS decides which one is visible
+  _renderResearchTableDesktop(sorted);
+  _renderResearchCards(sorted);
 }
 
 function _renderResearchTableDesktop(sorted) {
@@ -2371,23 +2361,23 @@ async function saveAISummary(symbol, summary) {
 async function askAI(symbol, btn) {
   const dateStr = new Date().toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
 
-  // Mobile card mode
-  if (isMobileResearch()) {
-    const card = btn.closest('.rc');
-    const existingSummary = card?.querySelector('.rc-ai-summary');
-    if (existingSummary) {
-      const hidden = existingSummary.style.display === 'none';
-      existingSummary.style.display = hidden ? '' : 'none';
+  // Detect context by parent element
+  const card = btn.closest('.rc');
+  if (card) {
+    // Mobile card mode
+    const existing = card.querySelector('.rc-ai-summary');
+    if (existing) {
+      const hidden = existing.style.display === 'none';
+      existing.style.display = hidden ? '' : 'none';
       btn.textContent = hidden ? '✕ סגור' : '🤖 AI';
       return;
     }
-    btn.disabled = true;
-    btn.textContent = '⏳';
+    btn.disabled = true; btn.textContent = '⏳';
     try {
       const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(symbol)}`,
                               { signal: AbortSignal.timeout(25000) });
       const data = await res.json();
-      if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר בשרת');
+      if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר');
       if (data.error) throw new Error(data.error);
       await saveAISummary(symbol, data.summary);
       const div = document.createElement('div');
@@ -2398,8 +2388,7 @@ async function askAI(symbol, btn) {
     } catch(e) {
       btn.textContent = '⚠️';
       setTimeout(() => { btn.textContent = '🤖 AI'; btn.disabled = false; }, 4000);
-      btn.disabled = false;
-      return;
+      btn.disabled = false; return;
     }
     btn.disabled = false;
     return;
@@ -2407,36 +2396,32 @@ async function askAI(symbol, btn) {
 
   // Desktop table mode
   const tr = btn.closest('tr');
-  const next = tr.nextElementSibling;
+  const next = tr?.nextElementSibling;
   if (next && next.classList.contains('ai-summary-row') && next.dataset.aiSymbol === symbol) {
     const hidden = next.style.display === 'none';
     next.style.display = hidden ? '' : 'none';
     btn.textContent = hidden ? '✕' : '🤖';
     return;
   }
-  btn.disabled = true;
-  btn.textContent = '⏳';
+  btn.disabled = true; btn.textContent = '⏳';
   try {
     const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(symbol)}`,
                             { signal: AbortSignal.timeout(25000) });
     const data = await res.json();
-    if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר בשרת');
+    if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר');
     if (data.error) throw new Error(data.error);
     await saveAISummary(symbol, data.summary);
     const aiRow = document.createElement('tr');
     aiRow.className = 'ai-summary-row';
     aiRow.dataset.aiSymbol = symbol;
-    aiRow.innerHTML = `<td colspan="7" class="ai-summary-cell">
-      <span class="ai-label">🤖 ${escHtml(symbol)}</span><span class="ai-date">· ${dateStr}</span>
-      ${escHtml(data.summary)}</td>`;
+    aiRow.innerHTML = `<td colspan="7" class="ai-summary-cell"><span class="ai-label">🤖 ${escHtml(symbol)}</span><span class="ai-date">· ${dateStr}</span> ${escHtml(data.summary)}</td>`;
     tr.after(aiRow);
     btn.textContent = '✕';
   } catch(e) {
     btn.textContent = '⚠️';
     btn.title = e.message;
     setTimeout(() => { btn.textContent = '🤖'; btn.title = 'סיכום AI'; btn.disabled = false; }, 4000);
-    btn.disabled = false;
-    return;
+    btn.disabled = false; return;
   }
   btn.disabled = false;
 }
@@ -2481,12 +2466,10 @@ async function fetchAllAI() {
 }
 
 function restoreStandardThead() {
-  // Restore table visibility, hide cards
-  const wrap = document.getElementById('market-table-wrap');
-  const cards = document.getElementById('research-cards');
-  if (wrap) wrap.style.display = '';
-  if (cards) { cards.style.display = 'none'; cards.innerHTML = ''; }
+  document.querySelector('.panel-market')?.classList.remove('research-mode-active');
   document.querySelector('.market-table')?.classList.remove('research-mode');
+  const cards = document.getElementById('research-cards');
+  if (cards) cards.innerHTML = '';
   const thead = document.getElementById('market-thead');
   if (thead) thead.innerHTML = `
     <tr>

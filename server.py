@@ -123,15 +123,16 @@ def fetch_nasdaq_earnings(symbols_set, days_ahead=45):
 
 
 def fetch_research(symbol):
-    """Fetch research data for a US stock: MA150, earnings date, news."""
+    """Fetch research data for a US stock: MA150, earnings date (Yahoo), news."""
     base2 = "https://query2.finance.yahoo.com"
     now_ts = int(datetime.datetime.utcnow().timestamp())
+    today  = datetime.date.today()
 
     result = {"symbol": symbol, "ma150": None, "price": None, "aboveMa150": None,
                "ma150Pct": None, "earningsDate": None, "daysToEarnings": None,
                "earningsTime": None, "news": []}
 
-    # 1. 1-year daily history → MA150
+    # 1. 1-year daily history → MA150 + earnings from Yahoo meta
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol + "?interval=1d&range=1y"
         req = urllib.request.Request(url, headers=HEADERS)
@@ -148,6 +149,15 @@ def fetch_research(symbol):
             if price:
                 result["aboveMa150"] = price > ma150
                 result["ma150Pct"]   = round((price - ma150) / ma150 * 100, 2)
+        # Earnings date from Yahoo meta (earningsTimestampStart / earningsTimestampEnd)
+        earn_ts = meta.get("earningsTimestampStart") or meta.get("earningsTimestampEnd")
+        if earn_ts:
+            earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
+            days = (earn_date - today).days
+            if days >= 0:  # only future earnings
+                result["earningsDate"]    = earn_ts
+                result["daysToEarnings"]  = days
+                result["earningsTime"]    = ""
     except Exception:
         pass
 
@@ -265,21 +275,14 @@ class Handler(SimpleHTTPRequestHandler):
                 self.wfile.write(body)
                 return
             try:
-                # Fetch research + earnings for all in parallel
+                # Fetch research for all in parallel
                 research_map = {}
-                try:
-                    earnings_map = fetch_nasdaq_earnings(set(symbols), days_ahead=45)
-                except Exception:
-                    earnings_map = {}
                 with ThreadPoolExecutor(max_workers=min(len(symbols), 8)) as ex:
                     futures = {ex.submit(fetch_research, sym): sym for sym in symbols}
                     for fut in as_completed(futures, timeout=30):
                         sym = futures[fut]
                         try:
-                            r = fut.result()
-                            if sym in earnings_map:
-                                r.update(earnings_map[sym])
-                            research_map[sym] = r
+                            research_map[sym] = fut.result()
                         except Exception:
                             research_map[sym] = {'symbol': sym}
                 # Call OpenAI for each symbol (sequential — avoids rate limits)
@@ -310,12 +313,6 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             try:
                 research = fetch_research(symbol)
-                try:
-                    earn_map = fetch_nasdaq_earnings({symbol}, days_ahead=45)
-                    if symbol in earn_map:
-                        research.update(earn_map[symbol])
-                except Exception:
-                    pass
                 summary = ask_openai(symbol, research)
                 body = json.dumps({"symbol": symbol, "summary": summary}, ensure_ascii=False).encode('utf-8')
                 self.send_response(200)
@@ -347,23 +344,13 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_error(400, 'Missing symbols')
                 return
             try:
-                # Fetch earnings dates from Nasdaq (best-effort — won't fail the request)
-                try:
-                    earnings_map = fetch_nasdaq_earnings(set(symbols))
-                except Exception:
-                    earnings_map = {}
-
                 research_map = {}
                 with ThreadPoolExecutor(max_workers=min(len(symbols), 8)) as ex:
                     futures = {ex.submit(fetch_research, sym): sym for sym in symbols}
                     for fut in as_completed(futures, timeout=25):
                         sym = futures[fut]
                         try:
-                            r = fut.result()
-                            # Merge earnings from Nasdaq
-                            if sym in earnings_map:
-                                r.update(earnings_map[sym])
-                            research_map[sym] = r
+                            research_map[sym] = fut.result()
                         except Exception:
                             research_map[sym] = {"symbol": sym}
                 result = [research_map[sym] for sym in symbols if sym in research_map]
