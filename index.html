@@ -930,7 +930,7 @@
     .ai-label { font-weight: 700; margin-left: 8px; }
     .ai-date  { font-size: 0.75rem; color: var(--text-muted); margin-left: 6px; }
     /* Research cards (mobile) */
-    #research-cards { padding: 6px 8px; display: flex; flex-direction: column; gap: 8px; }
+    #research-cards { padding: 6px 8px; display: flex; flex-direction: column; gap: 8px; min-height: 200px; overflow-y: auto; }
     .rc { background: var(--bg-card, #fff); border: 1px solid #e0e0e0; border-radius: 10px;
           padding: 10px 12px; }
     body.dark .rc { background: #1a2035; border-color: #2d3748; }
@@ -2129,17 +2129,22 @@ document.getElementById('chart-ranges').addEventListener('click', function(e) {
 
 // Row click → open chart
 document.getElementById('market-tbody').addEventListener('click', function(e) {
-  // AI button in research mode
+  // AI button in research mode (desktop table)
   const aiBtn = e.target.closest('.btn-ai');
   if (aiBtn) { e.stopPropagation(); askAI(aiBtn.dataset.symbol, aiBtn); return; }
 
   if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch')) return;
   const tr = e.target.closest('tr.mrow');
   if (!tr) return;
-  // renderMarketTable stores symbol/name in data attributes; renderUnifiedTable uses col-symbol
   const symbol = tr.dataset.symbol || tr.querySelector('.col-symbol div')?.textContent?.trim();
   const name   = tr.dataset.name   || tr.querySelector('.col-name')?.textContent?.trim();
   if (symbol) openChartModal(symbol, name);
+});
+
+// AI button clicks inside research cards (mobile)
+document.getElementById('research-cards').addEventListener('click', function(e) {
+  const aiBtn = e.target.closest('.btn-ai');
+  if (aiBtn) { e.stopPropagation(); askAI(aiBtn.dataset.symbol, aiBtn); }
 });
 
 /* ══════════════════════════════════════════════════════════════

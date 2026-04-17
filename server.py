@@ -114,8 +114,8 @@ def fetch_nasdaq_earnings(symbols_set, days_ahead=45):
     today = datetime.date.today()
     days = [(i, today + datetime.timedelta(days=i), symbols_set) for i in range(days_ahead)]
     result = {}
-    with ThreadPoolExecutor(max_workers=7) as ex:
-        for matches in ex.map(_fetch_nasdaq_day, days, timeout=15):
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        for matches in ex.map(_fetch_nasdaq_day, days, timeout=25):
             for sym, val in matches.items():
                 if sym not in result:
                     result[sym] = val
