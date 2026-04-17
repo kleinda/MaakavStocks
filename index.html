@@ -2285,7 +2285,7 @@ function _renderResearchTableDesktop(sorted) {
     const hasSummary = !!STATE.aiSummaries[d.symbol];
 
     const tr = document.createElement('tr');
-    tr.dataset.symJump = d.symbol;
+    tr.id = 'rrow-' + d.symbol;
     if (d.daysToEarnings != null && d.daysToEarnings <= 2) tr.className = 'research-earnings-soon';
     tr.innerHTML = `
       <td class="col-research-sym" style="cursor:pointer">
@@ -2342,6 +2342,7 @@ function _renderResearchCards(sorted) {
     const saved = STATE.aiSummaries[d.symbol];
 
     const card = document.createElement('div');
+    card.id = 'rrow-' + d.symbol;
     card.className = 'rc' + (d.daysToEarnings != null && d.daysToEarnings <= 2 ? ' rc-earnings-soon' : '');
     card.dataset.symbol = d.symbol;
 
@@ -2586,27 +2587,21 @@ function updateJumpBar(symbols) {
   sel.onchange = () => {
     const sym = sel.value;
     if (!sym) return;
-
-    // Find element in whichever container is visible
-    const card = document.querySelector(`.rc[data-symbol="${CSS.escape(sym)}"]`);
-    const tr   = document.querySelector(`tr[data-sym-jump="${CSS.escape(sym)}"]`);
-    const el   = card || tr;
-
-    if (el) {
-      // Scroll the overflow container, not the page
-      const scrollContainer = el.closest('#research-cards, .market-table-scroll');
-      if (scrollContainer) {
-        const containerRect = scrollContainer.getBoundingClientRect();
-        const elRect        = el.getBoundingClientRect();
-        const offset        = elRect.top - containerRect.top + scrollContainer.scrollTop - 60;
-        scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
-      } else {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      el.style.outline = '2px solid #1976d2';
-      setTimeout(() => { el.style.outline = ''; }, 1800);
-    }
     sel.value = '';
+
+    const el = document.getElementById('rrow-' + sym);
+    if (!el) return;
+
+    // Scroll the overflow container (table-scroll or cards)
+    const container = el.closest('#research-cards') || el.closest('#market-table-wrap');
+    if (container) {
+      const elTop        = el.getBoundingClientRect().top;
+      const containerTop = container.getBoundingClientRect().top;
+      container.scrollTo({ top: container.scrollTop + elTop - containerTop - 60, behavior: 'smooth' });
+    }
+
+    el.style.outline = '3px solid #1976d2';
+    setTimeout(() => { el.style.outline = ''; }, 2000);
   };
 }
 
