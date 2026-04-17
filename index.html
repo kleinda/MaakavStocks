@@ -535,28 +535,33 @@
 
     /* ── Mobile ─────────────────────────────────────────────────  */
     @media (max-width: 768px) {
-      /* Toolbar — compact */
-      .toolbar { height: auto; padding: 6px 12px; flex-wrap: nowrap; gap: 8px; }
-      .toolbar-status { display: none; }
-      .toolbar-logo { font-size: 1.3rem; }
-      .toolbar-title { font-size: 1rem; }
+      /* Toolbar — single tight row */
+      .toolbar { height: auto; padding: 5px 10px; flex-wrap: nowrap; gap: 6px; overflow: hidden; }
+      .toolbar-brand { flex-shrink: 1; min-width: 0; overflow: hidden; gap: 6px; }
+      .toolbar-logo { font-size: 1.1rem; flex-shrink: 0; }
+      .toolbar-title { font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .toolbar-subtitle { display: none; }
-      .toolbar-actions { gap: 6px; }
-      .btn-toolbar { font-size: 0.76rem; padding: 4px 9px; }
-      .btn-add { font-size: 0.76rem; padding: 4px 10px; }
+      .toolbar-status { display: none; }
+      .toolbar-actions { flex-shrink: 0; gap: 5px; }
+      .btn-toolbar { font-size: 0.74rem; padding: 4px 8px; }
+      .btn-add { font-size: 0.74rem; padding: 4px 9px; }
+      /* Hide "רענן" text, keep icon only */
+      #btn-manual-refresh { font-size: 1rem; padding: 4px 7px; }
 
-      /* Controls row — single compact line */
-      .controls-row { flex-wrap: nowrap; padding: 5px 10px; gap: 6px; align-items: center; }
-      .filter-bar { gap: 5px; flex-shrink: 0; }
+      /* Controls row — filter + jump on one line */
+      .controls-row { padding: 4px 8px; gap: 6px; flex-wrap: nowrap; align-items: center; }
+      .filter-bar { gap: 4px; flex-shrink: 0; }
       .filter-label { display: none; }
-      .summary-bar { gap: 12px; font-size: 0.78rem; }
+      .filter-select { font-size: 0.82rem; padding: 3px 6px; }
+      .jump-bar { flex: 1; min-width: 0; margin-right: 0; }
+      .jump-bar .filter-select { width: 100%; }
 
-      /* Jump bar inline */
-      .jump-bar { flex-basis: auto; margin-right: 0; flex: 1; }
-      .jump-bar .filter-select { max-width: 100%; flex: 1; }
+      /* Modal fits screen */
+      .modal-box { padding: 18px 16px 16px; border-radius: 14px; }
+      .modal-overlay { padding: 12px; }
 
       /* Panel */
-      .panel-market { padding: 0 6px 6px; }
+      .panel-market { padding: 0 4px 4px; }
     }
 
     /* ── פלאפון בלבד: 2-row table layout ──────────────────────── */
@@ -1067,7 +1072,6 @@
 <div class="controls-row">
   <div class="filter-bar" id="filter-bar"></div>
   <div class="jump-bar" id="jump-bar" style="display:none">
-    <span style="font-size:0.9rem">🔬</span>
     <select class="filter-select" id="jump-select">
       <option value="">↓ קפוץ למניה</option>
     </select>
@@ -2601,7 +2605,16 @@ function updateJumpBar(symbols) {
     const el = document.getElementById('rrow-' + sym);
     if (!el) return;
 
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Find the scrollable container (cards on mobile, table-wrap on desktop)
+    const scroller = document.getElementById('research-cards');
+    const tableWrap = document.getElementById('market-table-wrap');
+    const useScroller = scroller && getComputedStyle(scroller).display !== 'none' ? scroller : tableWrap;
+
+    if (useScroller) {
+      const top = el.offsetTop - useScroller.offsetTop - 8;
+      useScroller.scrollTo({ top, behavior: 'smooth' });
+    }
+
     el.style.outline = '3px solid #1976d2';
     setTimeout(() => { el.style.outline = ''; }, 2000);
   };
