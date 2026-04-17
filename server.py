@@ -6,8 +6,10 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib.request
 import urllib.parse
+import http.cookiejar
 import json
 import os
+import sys
 import datetime
 import calendar
 
@@ -31,6 +33,27 @@ HEADERS = {
 }
 
 MARKET_SYMBOLS = ["QQQ", "SPY", "DIA", "IWM", "BTC-USD", "ETH-USD", "TA35.TA", "TA90.TA"]
+
+# ── Yahoo Finance session (crumb + cookies) ──────────────────────────────────
+_cookie_jar  = http.cookiejar.CookieJar()
+_yf_opener   = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(_cookie_jar))
+_yahoo_crumb = None
+
+def _init_yahoo_crumb():
+    global _yahoo_crumb
+    try:
+        _yf_opener.open(urllib.request.Request('https://finance.yahoo.com/', headers=HEADERS), timeout=15)
+        req = urllib.request.Request(
+            'https://query1.finance.yahoo.com/v1/test/getcrumb',
+            headers={**HEADERS, 'Accept': 'text/plain'}
+        )
+        with _yf_opener.open(req, timeout=8) as r:
+            _yahoo_crumb = r.read().decode('utf-8').strip()
+        print(f"[yahoo] crumb OK ({_yahoo_crumb[:6]}...)", file=sys.stderr)
+    except Exception as e:
+        print(f"[yahoo] crumb failed: {e}", file=sys.stderr)
+
+_init_yahoo_crumb()
 
 def fetch_quote(symbol):
     """Fetch real-time quote + daily change + pre/after-hours price."""
@@ -150,51 +173,33 @@ def fetch_research(symbol):
                 result["aboveMa150"] = price > ma150
                 result["ma150Pct"]   = round((price - ma150) / ma150 * 100, 2)
     except Exception as e:
-        import sys
         print(f"[research] chart error {symbol}: {e}", file=sys.stderr)
 
-    # 2b. Earnings date — calendarEvents (primary), v7/quote (fallback)
-    import sys
-    try:
-        url_e = ("https://query1.finance.yahoo.com/v10/finance/quoteSummary/" + symbol
-                 + "?modules=calendarEvents")
-        req_e = urllib.request.Request(url_e, headers=HEADERS)
-        with urllib.request.urlopen(req_e, timeout=8) as r_e:
-            data_e = json.loads(r_e.read())
-        earn_list = (data_e.get("quoteSummary", {})
-                           .get("result", [{}])[0]
-                           .get("calendarEvents", {})
-                           .get("earnings", {})
-                           .get("earningsDate", []))
-        for ed in earn_list:
-            earn_ts = ed.get("raw")
-            if earn_ts:
-                earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
-                days = (earn_date - today).days
-                if days >= -1:
-                    result["earningsDate"]   = earn_ts
-                    result["daysToEarnings"] = max(days, 0)
-                    break
-    except Exception as e:
-        print(f"[earn-cal] {symbol}: {e}", file=sys.stderr)
-
-    # fallback: v7/finance/quote
-    if result["earningsDate"] is None:
+    # 2b. Earnings date — calendarEvents with crumb
+    if _yahoo_crumb:
         try:
-            url_q = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" + symbol
-            req_q = urllib.request.Request(url_q, headers=HEADERS)
-            with urllib.request.urlopen(req_q, timeout=8) as r_q:
-                data_q = json.loads(r_q.read())
-            qr = (data_q.get("quoteResponse", {}).get("result") or [{}])[0]
-            earn_ts = qr.get("earningsTimestampStart") or qr.get("earningsTimestamp")
-            if earn_ts:
-                earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
-                days = (earn_date - today).days
-                if days >= -1:
-                    result["earningsDate"]   = earn_ts
-                    result["daysToEarnings"] = max(days, 0)
+            crumb_q = urllib.parse.quote(_yahoo_crumb)
+            url_e = (f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{symbol}"
+                     f"?modules=calendarEvents&crumb={crumb_q}")
+            req_e = urllib.request.Request(url_e, headers=HEADERS)
+            with _yf_opener.open(req_e, timeout=8) as r_e:
+                data_e = json.loads(r_e.read())
+            earn_list = (data_e.get("quoteSummary", {})
+                               .get("result", [{}])[0]
+                               .get("calendarEvents", {})
+                               .get("earnings", {})
+                               .get("earningsDate", []))
+            for ed in earn_list:
+                earn_ts = ed.get("raw")
+                if earn_ts:
+                    earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
+                    days = (earn_date - today).days
+                    if days >= -1:
+                        result["earningsDate"]   = earn_ts
+                        result["daysToEarnings"] = max(days, 0)
+                        break
         except Exception as e:
-            print(f"[earn-v7] {symbol}: {e}", file=sys.stderr)
+            print(f"[earn] {symbol}: {e}", file=sys.stderr)
 
     # 2. News headlines (last 48h)
     try:
