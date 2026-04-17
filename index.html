@@ -743,6 +743,13 @@
       gap: 8px;
       align-items: center;
     }
+    .jump-bar {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      margin-right: 6px;
+    }
+    .jump-bar .filter-select { max-width: 140px; }
 
     /* ── Summary bar ─────────────────────────────────────────── */
     .summary-bar {
@@ -1046,6 +1053,12 @@
 <!-- ── Controls Row ─────────────────────────────────────────── -->
 <div class="controls-row">
   <div class="filter-bar" id="filter-bar"></div>
+  <div class="jump-bar" id="jump-bar" style="display:none">
+    <span style="font-size:0.9rem">🔬</span>
+    <select class="filter-select" id="jump-select">
+      <option value="">↓ קפוץ למניה</option>
+    </select>
+  </div>
 </div>
 
 <!-- ── Market Panel ──────────────────────────────────────────── -->
@@ -2248,9 +2261,9 @@ function renderResearchTable(dataArr) {
     if (b.daysToEarnings == null) return -1;
     return a.daysToEarnings - b.daysToEarnings;
   });
-  // Always render both — CSS decides which one is visible
   _renderResearchTableDesktop(sorted);
   _renderResearchCards(sorted);
+  updateJumpBar(sorted.map(d => d.symbol));
 }
 
 function _renderResearchTableDesktop(sorted) {
@@ -2268,6 +2281,7 @@ function _renderResearchTableDesktop(sorted) {
     const hasSummary = !!STATE.aiSummaries[d.symbol];
 
     const tr = document.createElement('tr');
+    tr.dataset.symJump = d.symbol;
     if (d.daysToEarnings != null && d.daysToEarnings <= 2) tr.className = 'research-earnings-soon';
     tr.innerHTML = `
       <td class="col-research-sym" style="cursor:pointer">
@@ -2470,6 +2484,7 @@ function restoreStandardThead() {
   document.querySelector('.market-table')?.classList.remove('research-mode');
   const cards = document.getElementById('research-cards');
   if (cards) cards.innerHTML = '';
+  updateJumpBar(null);
   const thead = document.getElementById('market-thead');
   if (thead) thead.innerHTML = `
     <tr>
@@ -2547,6 +2562,37 @@ function renderFilterBar() {
   });
 
   bar.appendChild(sel);
+}
+
+function updateJumpBar(symbols) {
+  const jumpBar = document.getElementById('jump-bar');
+  const sel     = document.getElementById('jump-select');
+  if (!jumpBar || !sel) return;
+  if (!symbols || symbols.length === 0) { jumpBar.style.display = 'none'; return; }
+
+  sel.innerHTML = '<option value="">↓ קפוץ למניה</option>';
+  symbols.forEach(sym => {
+    const opt = document.createElement('option');
+    opt.value = sym;
+    opt.textContent = sym;
+    sel.appendChild(opt);
+  });
+  jumpBar.style.display = 'flex';
+
+  sel.onchange = () => {
+    const sym = sel.value;
+    if (!sym) return;
+    // Try card first (mobile), then table row (desktop)
+    const card = document.querySelector(`.rc[data-symbol="${CSS.escape(sym)}"]`);
+    const tr   = document.querySelector(`tr[data-sym-jump="${CSS.escape(sym)}"]`);
+    const el   = card || tr;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.outline = '2px solid #1976d2';
+      setTimeout(() => { el.style.outline = ''; }, 1800);
+    }
+    sel.value = '';
+  };
 }
 
 /* ══════════════════════════════════════════════════════════════
