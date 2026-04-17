@@ -2281,7 +2281,14 @@ function _buildResearchBadges(d) {
 }
 
 function renderResearchTable(dataArr) {
-  const sorted = [...dataArr].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  const sorted = [...dataArr].sort((a, b) => {
+    const aHas = a.daysToEarnings != null;
+    const bHas = b.daysToEarnings != null;
+    if (aHas && bHas) return a.daysToEarnings - b.daysToEarnings;
+    if (aHas) return -1;
+    if (bHas) return 1;
+    return a.symbol.localeCompare(b.symbol);
+  });
   _renderResearchTableDesktop(sorted);
   _renderResearchCards(sorted);
   updateJumpBar(sorted.map(d => d.symbol));
