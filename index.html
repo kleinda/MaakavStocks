@@ -535,19 +535,28 @@
 
     /* ── Mobile ─────────────────────────────────────────────────  */
     @media (max-width: 768px) {
-      /* Toolbar */
-      .toolbar { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+      /* Toolbar — compact */
+      .toolbar { height: auto; padding: 6px 12px; flex-wrap: nowrap; gap: 8px; }
       .toolbar-status { display: none; }
-      .toolbar-actions { gap: 8px; }
-      .btn-toolbar { font-size: 0.78rem; padding: 5px 11px; }
+      .toolbar-logo { font-size: 1.3rem; }
+      .toolbar-title { font-size: 1rem; }
+      .toolbar-subtitle { display: none; }
+      .toolbar-actions { gap: 6px; }
+      .btn-toolbar { font-size: 0.76rem; padding: 4px 9px; }
+      .btn-add { font-size: 0.76rem; padding: 4px 10px; }
 
-      /* Controls row */
-      .controls-row { flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+      /* Controls row — single compact line */
+      .controls-row { flex-wrap: nowrap; padding: 5px 10px; gap: 6px; align-items: center; }
+      .filter-bar { gap: 5px; flex-shrink: 0; }
+      .filter-label { display: none; }
       .summary-bar { gap: 12px; font-size: 0.78rem; }
 
-      /* Panel */
-      .panel-market { padding: 0 10px 6px; }
+      /* Jump bar inline */
+      .jump-bar { flex-basis: auto; margin-right: 0; flex: 1; }
+      .jump-bar .filter-select { max-width: 100%; flex: 1; }
 
+      /* Panel */
+      .panel-market { padding: 0 6px 6px; }
     }
 
     /* ── פלאפון בלבד: 2-row table layout ──────────────────────── */
@@ -2592,14 +2601,7 @@ function updateJumpBar(symbols) {
     const el = document.getElementById('rrow-' + sym);
     if (!el) return;
 
-    // Scroll the overflow container (table-scroll or cards)
-    const container = el.closest('#research-cards') || el.closest('#market-table-wrap');
-    if (container) {
-      const elTop        = el.getBoundingClientRect().top;
-      const containerTop = container.getBoundingClientRect().top;
-      container.scrollTo({ top: container.scrollTop + elTop - containerTop - 60, behavior: 'smooth' });
-    }
-
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     el.style.outline = '3px solid #1976d2';
     setTimeout(() => { el.style.outline = ''; }, 2000);
   };
