@@ -132,7 +132,7 @@ def fetch_research(symbol):
                "ma150Pct": None, "earningsDate": None, "daysToEarnings": None,
                "earningsTime": None, "news": []}
 
-    # 1. 1-year daily history → MA150 + earnings from Yahoo meta
+    # 1. 1-year daily history → MA150 + earnings from chart meta
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol + "?interval=1d&range=1y"
         req = urllib.request.Request(url, headers=HEADERS)
@@ -149,33 +149,18 @@ def fetch_research(symbol):
             if price:
                 result["aboveMa150"] = price > ma150
                 result["ma150Pct"]   = round((price - ma150) / ma150 * 100, 2)
-    except Exception:
-        pass
-
-    # 2b. Earnings date — Yahoo quoteSummary (calendarEvents)
-    try:
-        url2 = ("https://query1.finance.yahoo.com/v10/finance/quoteSummary/" + symbol
-                + "?modules=calendarEvents")
-        req2 = urllib.request.Request(url2, headers=HEADERS)
-        with urllib.request.urlopen(req2, timeout=8) as r2:
-            data2 = json.loads(r2.read())
-        earnings_list = (data2.get("quoteSummary", {})
-                              .get("result", [{}])[0]
-                              .get("calendarEvents", {})
-                              .get("earnings", {})
-                              .get("earningsDate", []))
-        for ed in earnings_list:
-            earn_ts = ed.get("raw")
-            if earn_ts:
-                earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
-                days = (earn_date - today).days
-                if days >= -1:  # allow yesterday (pre-market today)
-                    result["earningsDate"]   = earn_ts
-                    result["daysToEarnings"] = max(days, 0)
-                    result["earningsTime"]   = ""
-                    break
-    except Exception:
-        pass
+        # Earnings from chart meta — no extra request needed
+        earn_ts = meta.get("earningsTimestampStart") or meta.get("earningsTimestamp")
+        if earn_ts:
+            earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
+            days = (earn_date - today).days
+            if days >= 0:  # only future dates (past = stale, ignore)
+                result["earningsDate"]   = earn_ts
+                result["daysToEarnings"] = days
+                result["earningsTime"]   = ""
+    except Exception as e:
+        import sys
+        print(f"[research] chart error {symbol}: {e}", file=sys.stderr)
 
     # 2. News headlines (last 48h)
     try:
