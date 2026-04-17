@@ -535,30 +535,29 @@
 
     /* ── Mobile ─────────────────────────────────────────────────  */
     @media (max-width: 768px) {
-      /* Toolbar — single tight row */
-      .toolbar { height: auto; padding: 5px 10px; flex-wrap: nowrap; gap: 6px; overflow: hidden; }
-      .toolbar-brand { flex-shrink: 1; min-width: 0; overflow: hidden; gap: 6px; }
-      .toolbar-logo { font-size: 1.1rem; flex-shrink: 0; }
-      .toolbar-title { font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      /* Toolbar — brand right, actions left (RTL), no overflow */
+      .toolbar { height: auto; padding: 5px 10px; flex-wrap: nowrap; gap: 6px; }
+      .toolbar-brand { flex-shrink: 0; gap: 5px; }
+      .toolbar-logo { display: none; }
+      .toolbar-title { font-size: 0.9rem; }
       .toolbar-subtitle { display: none; }
       .toolbar-status { display: none; }
-      .toolbar-actions { flex-shrink: 0; gap: 5px; }
+      .toolbar-actions { flex: 1; justify-content: flex-start; gap: 5px; }
       .btn-toolbar { font-size: 0.74rem; padding: 4px 8px; }
       .btn-add { font-size: 0.74rem; padding: 4px 9px; }
-      /* Hide "רענן" text, keep icon only */
-      #btn-manual-refresh { font-size: 1rem; padding: 4px 7px; }
+      #btn-manual-refresh .refresh-text { display: none; }
 
-      /* Controls row — filter + jump on one line */
-      .controls-row { padding: 4px 8px; gap: 6px; flex-wrap: nowrap; align-items: center; }
-      .filter-bar { gap: 4px; flex-shrink: 0; }
+      /* Controls row — two compact selects on one line */
+      .controls-row { padding: 4px 8px; gap: 5px; flex-wrap: nowrap; align-items: center; }
+      .filter-bar { flex-shrink: 0; gap: 4px; }
       .filter-label { display: none; }
-      .filter-select { font-size: 0.82rem; padding: 3px 6px; }
+      .filter-select { font-size: 0.78rem; padding: 3px 4px; max-width: 90px; }
       .jump-bar { flex: 1; min-width: 0; margin-right: 0; }
-      .jump-bar .filter-select { width: 100%; }
+      .jump-bar .filter-select { max-width: 100%; width: 100%; }
 
       /* Modal fits screen */
-      .modal-box { padding: 18px 16px 16px; border-radius: 14px; }
-      .modal-overlay { padding: 12px; }
+      .modal-box { padding: 16px 14px 14px; border-radius: 14px; }
+      .modal-overlay { padding: 10px; }
 
       /* Panel */
       .panel-market { padding: 0 4px 4px; }
@@ -1063,7 +1062,7 @@
 
   <div class="toolbar-actions">
     <button class="btn-toolbar" id="btn-dark-mode" title="מצב לילה">🌙</button>
-    <button class="btn-toolbar" id="btn-manual-refresh" title="רענן עכשיו">&#8635; רענן</button>
+    <button class="btn-toolbar" id="btn-manual-refresh" title="רענן עכשיו">&#8635;<span class="refresh-text"> רענן</span></button>
     <button class="btn-toolbar btn-add" id="btn-open-modal">+ הוסף נייר ערך</button>
   </div>
 </header>

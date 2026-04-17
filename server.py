@@ -149,15 +149,31 @@ def fetch_research(symbol):
             if price:
                 result["aboveMa150"] = price > ma150
                 result["ma150Pct"]   = round((price - ma150) / ma150 * 100, 2)
-        # Earnings date from Yahoo meta (earningsTimestampStart / earningsTimestampEnd)
-        earn_ts = meta.get("earningsTimestampStart") or meta.get("earningsTimestampEnd")
-        if earn_ts:
-            earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
-            days = (earn_date - today).days
-            if days >= 0:  # only future earnings
-                result["earningsDate"]    = earn_ts
-                result["daysToEarnings"]  = days
-                result["earningsTime"]    = ""
+    except Exception:
+        pass
+
+    # 2b. Earnings date — Yahoo quoteSummary (calendarEvents)
+    try:
+        url2 = ("https://query1.finance.yahoo.com/v10/finance/quoteSummary/" + symbol
+                + "?modules=calendarEvents")
+        req2 = urllib.request.Request(url2, headers=HEADERS)
+        with urllib.request.urlopen(req2, timeout=8) as r2:
+            data2 = json.loads(r2.read())
+        earnings_list = (data2.get("quoteSummary", {})
+                              .get("result", [{}])[0]
+                              .get("calendarEvents", {})
+                              .get("earnings", {})
+                              .get("earningsDate", []))
+        for ed in earnings_list:
+            earn_ts = ed.get("raw")
+            if earn_ts:
+                earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
+                days = (earn_date - today).days
+                if days >= -1:  # allow yesterday (pre-market today)
+                    result["earningsDate"]   = earn_ts
+                    result["daysToEarnings"] = max(days, 0)
+                    result["earningsTime"]   = ""
+                    break
     except Exception:
         pass
 
