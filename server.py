@@ -267,7 +267,10 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 # Fetch research + earnings for all in parallel
                 research_map = {}
-                earnings_map = fetch_nasdaq_earnings(set(symbols), days_ahead=45)
+                try:
+                    earnings_map = fetch_nasdaq_earnings(set(symbols), days_ahead=45)
+                except Exception:
+                    earnings_map = {}
                 with ThreadPoolExecutor(max_workers=min(len(symbols), 8)) as ex:
                     futures = {ex.submit(fetch_research, sym): sym for sym in symbols}
                     for fut in as_completed(futures, timeout=30):
@@ -307,9 +310,12 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             try:
                 research = fetch_research(symbol)
-                earn_map = fetch_nasdaq_earnings({symbol}, days_ahead=45)
-                if symbol in earn_map:
-                    research.update(earn_map[symbol])
+                try:
+                    earn_map = fetch_nasdaq_earnings({symbol}, days_ahead=45)
+                    if symbol in earn_map:
+                        research.update(earn_map[symbol])
+                except Exception:
+                    pass
                 summary = ask_openai(symbol, research)
                 body = json.dumps({"symbol": symbol, "summary": summary}, ensure_ascii=False).encode('utf-8')
                 self.send_response(200)
@@ -341,8 +347,11 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_error(400, 'Missing symbols')
                 return
             try:
-                # Fetch earnings dates from Nasdaq for all symbols at once
-                earnings_map = fetch_nasdaq_earnings(set(symbols))
+                # Fetch earnings dates from Nasdaq (best-effort — won't fail the request)
+                try:
+                    earnings_map = fetch_nasdaq_earnings(set(symbols))
+                except Exception:
+                    earnings_map = {}
 
                 research_map = {}
                 with ThreadPoolExecutor(max_workers=min(len(symbols), 8)) as ex:

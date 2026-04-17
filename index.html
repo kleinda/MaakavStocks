@@ -930,7 +930,7 @@
     .ai-label { font-weight: 700; margin-left: 8px; }
     .ai-date  { font-size: 0.75rem; color: var(--text-muted); margin-left: 6px; }
     /* Research cards (mobile) */
-    #research-cards { padding: 6px 8px; display: flex; flex-direction: column; gap: 8px; min-height: 200px; overflow-y: auto; }
+    #research-cards { padding: 6px 8px; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 0; }
     .rc { background: var(--bg-card, #fff); border: 1px solid #e0e0e0; border-radius: 10px;
           padding: 10px 12px; }
     body.dark .rc { background: #1a2035; border-color: #2d3748; }
@@ -1045,7 +1045,7 @@
 
 <!-- ── Market Panel ──────────────────────────────────────────── -->
 <section class="panel-market">
-  <div class="market-table-scroll" id="market-table-wrap">
+  <div class="market-table-scroll" id="market-table-wrap" style="flex:1;min-height:0">
     <table class="market-table">
       <thead id="market-thead">
         <tr>
