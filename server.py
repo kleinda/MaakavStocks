@@ -11,7 +11,18 @@ import os
 import datetime
 import calendar
 
+# Load .env if present (local development)
+_env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+if os.path.exists(_env_file):
+    with open(_env_file) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 PORT = int(os.environ.get('PORT', 3000))
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 YAHOO_BASE = 'https://query2.finance.yahoo.com/v8/finance/chart/'
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -98,7 +109,7 @@ def _fetch_nasdaq_day(args):
     return matches
 
 
-def fetch_nasdaq_earnings(symbols_set, days_ahead=21):
+def fetch_nasdaq_earnings(symbols_set, days_ahead=45):
     """Fetch earnings dates from Nasdaq calendar — parallel requests."""
     today = datetime.date.today()
     days = [(i, today + datetime.timedelta(days=i), symbols_set) for i in range(days_ahead)]
@@ -159,6 +170,40 @@ def fetch_research(symbol):
     return result
 
 
+def ask_openai(symbol, research):
+    """Send research data to OpenAI and get Hebrew summary."""
+    if not OPENAI_API_KEY:
+        raise ValueError("no_key")
+    news_str = ' | '.join(n['title'] for n in research.get('news', [])[:3]) or 'אין חדשות'
+    earn_str = f"בעוד {research['daysToEarnings']} ימים" if research.get('daysToEarnings') is not None else 'לא ידוע'
+    ma_pct   = research.get('ma150Pct', 0) or 0
+    ma_dir   = 'מעל' if research.get('aboveMa150') else 'מתחת'
+    ma_str   = f"{ma_dir} MA150 ב-{ma_pct:.1f}%" if research.get('ma150') else 'לא זמין'
+
+    prompt = (
+        f"אתה אנליסט מניות. סכם בעברית בקצרה (3-4 שורות) את מצב המניה {symbol}:\n"
+        f"- מחיר: {research.get('price','?')}, {ma_str}\n"
+        f"- דוח רווחים: {earn_str}\n"
+        f"- חדשות אחרונות: {news_str}\n"
+        f"מה כדאי לשים לב? היה ממוקד ומעשי."
+    )
+    payload = json.dumps({
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 220,
+        "temperature": 0.4,
+    }).encode('utf-8')
+    req = urllib.request.Request(
+        'https://api.openai.com/v1/chat/completions',
+        data=payload,
+        headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'},
+        method='POST'
+    )
+    with urllib.request.urlopen(req, timeout=20) as r:
+        resp = json.loads(r.read())
+    return resp['choices'][0]['message']['content'].strip()
+
+
 class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -201,6 +246,90 @@ class Handler(SimpleHTTPRequestHandler):
                 self.wfile.write(body)
             except Exception as e:
                 self.send_error(502, 'Chart error: ' + str(e))
+            return
+
+        # AI summary for multiple symbols (bulk) — must come BEFORE single
+        if parsed.path.startswith('/proxy/ai-summary-bulk'):
+            params = dict(urllib.parse.parse_qsl(parsed.query))
+            symbols_str = params.get('symbols', '')
+            symbols = [s.strip() for s in symbols_str.split(',') if s.strip()]
+            if not symbols:
+                self.send_error(400, 'Missing symbols')
+                return
+            if not OPENAI_API_KEY:
+                body = json.dumps({"error": "no_key"}).encode()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            try:
+                # Fetch research + earnings for all in parallel
+                research_map = {}
+                earnings_map = fetch_nasdaq_earnings(set(symbols), days_ahead=45)
+                with ThreadPoolExecutor(max_workers=min(len(symbols), 8)) as ex:
+                    futures = {ex.submit(fetch_research, sym): sym for sym in symbols}
+                    for fut in as_completed(futures, timeout=30):
+                        sym = futures[fut]
+                        try:
+                            r = fut.result()
+                            if sym in earnings_map:
+                                r.update(earnings_map[sym])
+                            research_map[sym] = r
+                        except Exception:
+                            research_map[sym] = {'symbol': sym}
+                # Call OpenAI for each symbol (sequential — avoids rate limits)
+                results = []
+                for sym in symbols:
+                    try:
+                        summary = ask_openai(sym, research_map.get(sym, {}))
+                        results.append({'symbol': sym, 'summary': summary})
+                    except Exception as e:
+                        results.append({'symbol': sym, 'error': str(e)})
+                body = json.dumps(results, ensure_ascii=False).encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except Exception as e:
+                self.send_error(502, 'Bulk AI error: ' + str(e))
+            return
+
+        # AI summary for a single symbol
+        if parsed.path.startswith('/proxy/ai-summary'):
+            params = dict(urllib.parse.parse_qsl(parsed.query))
+            symbol = params.get('symbol', '').strip()
+            if not symbol:
+                self.send_error(400, 'Missing symbol')
+                return
+            try:
+                research = fetch_research(symbol)
+                earn_map = fetch_nasdaq_earnings({symbol}, days_ahead=45)
+                if symbol in earn_map:
+                    research.update(earn_map[symbol])
+                summary = ask_openai(symbol, research)
+                body = json.dumps({"symbol": symbol, "summary": summary}, ensure_ascii=False).encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except ValueError as e:
+                if 'no_key' in str(e):
+                    body = json.dumps({"error": "no_key"}).encode()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(body)
+                else:
+                    self.send_error(502, str(e))
+            except Exception as e:
+                self.send_error(502, 'AI error: ' + str(e))
             return
 
         # Research data — MA150, earnings (Nasdaq), news for US stocks

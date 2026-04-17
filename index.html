@@ -589,6 +589,28 @@
       .ytd-label, .pre-label { display: inline; }
     }
 
+    /* ── Research mode: override mobile flex-table ── */
+    @media (max-width: 480px) {
+      /* Restore proper table display — research is scrollable, not flex */
+      .market-table.research-mode,
+      .market-table.research-mode tbody { display: table; width: 100%; }
+      .market-table.research-mode thead { display: table-header-group !important; }
+      .market-table.research-mode tr   { display: table-row; }
+      .market-table.research-mode td,
+      .market-table.research-mode th   { display: table-cell; }
+      /* Tighter column widths on small screens */
+      .market-table.research-mode .col-research-sym { width: 72px; min-width: 60px; }
+      .market-table.research-mode .col-price        { width: 62px; }
+      .market-table.research-mode .col-research-ma  { width: 100px; }
+      .market-table.research-mode .col-research-earn{ width: 88px; }
+      /* Hide news column on mobile — too wide, read in AI summary */
+      .market-table.research-mode .col-research-news { display: none; }
+      /* AI summary: wrap text naturally */
+      .ai-summary-cell { white-space: normal; }
+      /* Compact AI button col */
+      .market-table.research-mode .col-research-ai { width: 38px; }
+    }
+
     /* ── Market Panel ────────────────────────────────────────── */
     .panel-market {
       flex: 1;
@@ -877,8 +899,8 @@
     .chart-symbol { font-size: 1.1rem; font-weight: 900; color: var(--text); direction: ltr; white-space: nowrap; }
     .chart-current-price { font-size: 0.95rem; font-weight: 700; direction: ltr; white-space: nowrap; }
     /* ── Research table ───────────────────────── */
-    .research-earnings-soon td { background: #fff3e0 !important; }
-    body.dark .research-earnings-soon td { background: #2a1800 !important; }
+    .research-earnings-soon td { background: #fff9c4 !important; }
+    body.dark .research-earnings-soon td { background: #2a2800 !important; }
     .badge-ma-above  { background: #e8f5e9; color: #1b5e20; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
     .badge-ma-below  { background: #ffebee; color: #b71c1c; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
     .badge-upgrade   { background: #e3f2fd; color: #0d47a1; border-radius: 6px; padding: 2px 7px; font-size: 0.75rem; }
@@ -894,6 +916,32 @@
     .research-col-news { max-width: 220px; }
     .research-col-recs { max-width: 180px; }
     .research-col-recs .badge-upgrade, .research-col-recs .badge-downgrade { display: inline-block; margin: 1px 0; }
+    .btn-ai { background: none; border: 1px solid #90caf9; border-radius: 6px;
+              padding: 2px 7px; cursor: pointer; font-size: 0.95rem; transition: background 0.15s; }
+    .btn-ai:hover:not(:disabled) { background: #e3f2fd; }
+    .btn-ai:disabled { opacity: 0.6; cursor: default; }
+    body.dark .btn-ai { border-color: #3949ab; color: #90caf9; }
+    body.dark .btn-ai:hover:not(:disabled) { background: #1e2235; }
+    .ai-summary-row td { padding: 0 !important; }
+    .ai-summary-cell { background: #f0f7ff; padding: 10px 18px !important;
+                       font-size: 0.85rem; line-height: 1.65; color: #1a237e;
+                       border-right: 3px solid #1976d2; white-space: pre-wrap; }
+    body.dark .ai-summary-cell { background: #0d1a2e; color: #90caf9; border-right-color: #3f51b5; }
+    .ai-label { font-weight: 700; margin-left: 8px; }
+    .ai-date  { font-size: 0.75rem; color: var(--text-muted); margin-left: 6px; }
+    .btn-ai-all { background: #1976d2; color: #fff; border: none; border-radius: 6px;
+                  padding: 3px 8px; cursor: pointer; font-size: 0.82rem; white-space: nowrap; }
+    .btn-ai-all:hover:not(:disabled) { background: #1565c0; }
+    .btn-ai-all:disabled { opacity: 0.6; cursor: default; }
+    body.dark .btn-ai-all { background: #3949ab; }
+    /* Research mode compact table */
+    .market-table.research-mode td { white-space: normal; vertical-align: top; padding: 8px 10px; }
+    .market-table.research-mode .col-research-sym { min-width: 100px; width: 130px; }
+    .market-table.research-mode .col-price { width: 85px; text-align: right; }
+    .market-table.research-mode .col-research-ma { width: 155px; }
+    .market-table.research-mode .col-research-earn { width: 160px; }
+    .market-table.research-mode .col-research-news { width: auto; }  /* fills rest */
+    .col-research-name { font-size: 0.74rem; color: var(--text-muted); font-weight: 400; display: block; line-height: 1.3; }
     .chart-name   { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .chart-close  {
       background: none; border: none; font-size: 1.3rem;
@@ -1141,6 +1189,7 @@ const STATE = {
   activeFilters: ['מדדים ותעודות סל'],
   researchData: {},       // { AAPL: { ma150, aboveMa150, earningsDate, upgrades, news } }
   researchLoading: false,
+  aiSummaries: {},        // { AAPL: { summary, updatedAt } }  ← Firebase cached
   lastMarketQuotes: [],
   marketPrevClose: {},  // { symbol: Dec31close } — fetched once per session for YTD calc
   sort: { col: null, dir: 'asc' },
@@ -2057,6 +2106,10 @@ document.getElementById('chart-ranges').addEventListener('click', function(e) {
 
 // Row click → open chart
 document.getElementById('market-tbody').addEventListener('click', function(e) {
+  // AI button in research mode
+  const aiBtn = e.target.closest('.btn-ai');
+  if (aiBtn) { e.stopPropagation(); askAI(aiBtn.dataset.symbol, aiBtn); return; }
+
   if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch')) return;
   const tr = e.target.closest('tr.mrow');
   if (!tr) return;
@@ -2081,24 +2134,37 @@ async function loadAndRenderResearch() {
   const thead = document.getElementById('market-thead');
 
   // Update thead for research columns
-  if (thead) thead.innerHTML = `<tr>
-    <th>סמל</th><th>שם</th><th>שער</th>
-    <th>MA150</th><th>דוח קרוב</th>
-    <th class="research-col-news">חדשות (48 שע')</th>
-  </tr>`;
+  document.querySelector('.market-table')?.classList.add('research-mode');
+  if (thead) {
+    thead.innerHTML = `<tr>
+      <th class="col-research-sym">סמל / שם</th>
+      <th class="col-price">שער</th>
+      <th class="col-research-ma">MA150</th>
+      <th class="col-research-earn">דוח קרוב</th>
+      <th class="col-research-news">חדשות (48 שע')</th>
+      <th class="col-research-ai" style="width:84px;text-align:center">
+        <button class="btn-ai-all" id="btn-ai-all" title="ניתוח AI לכל המניות החסרות">🤖 הכל</button>
+      </th>
+    </tr>`;
+    document.getElementById('btn-ai-all').addEventListener('click', fetchAllAI);
+  }
 
   if (symbols.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:#aaa">אין מניות חול או מעקב ברשימה</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa">אין מניות חול או מעקב ברשימה</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</td></tr>`;
 
   try {
-    const res = await fetch(
-      `/proxy/research?symbols=${symbols.map(encodeURIComponent).join(',')}`,
-      { signal: AbortSignal.timeout(30000) }
-    );
+    // Parallel: research data + Firebase AI summaries
+    const [res] = await Promise.all([
+      fetch(`/proxy/research?symbols=${symbols.map(encodeURIComponent).join(',')}`,
+            { signal: AbortSignal.timeout(30000) }),
+      db.collection('ai_summaries').get().then(snap => {
+        snap.forEach(d => { if (symbols.includes(d.id)) STATE.aiSummaries[d.id] = d.data(); });
+      }).catch(() => {})
+    ]);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     data.forEach(d => { STATE.researchData[d.symbol] = d; });
@@ -2111,10 +2177,16 @@ async function loadAndRenderResearch() {
 function renderResearchTable(dataArr) {
   const tbody = document.getElementById('market-tbody');
   tbody.innerHTML = '';
-  const now = Date.now() / 1000;
 
-  dataArr.forEach(d => {
-    const item = STATE.watchlist.find(i => i.symbol === d.symbol) || {};
+  // Sort: earnings soonest first, no-date last
+  const sorted = [...dataArr].sort((a, b) => {
+    if (a.daysToEarnings == null && b.daysToEarnings == null) return 0;
+    if (a.daysToEarnings == null) return 1;
+    if (b.daysToEarnings == null) return -1;
+    return a.daysToEarnings - b.daysToEarnings;
+  });
+
+  sorted.forEach(d => {
     const mktD = STATE.marketData[d.symbol] || {};
     const price = mktD.price ?? d.price;
     const name  = mktD.name || d.symbol;
@@ -2128,7 +2200,7 @@ function renderResearchTable(dataArr) {
         : `<span class="badge-ma-below">▼ מתחת MA150 ${sign}${d.ma150Pct?.toFixed(1)}%</span>`;
     }
 
-    // Earnings badge (from Nasdaq calendar)
+    // Earnings badge
     let earnBadge = '—';
     if (d.earningsDate) {
       const days = d.daysToEarnings;
@@ -2137,7 +2209,7 @@ function renderResearchTable(dataArr) {
                       d.earningsTime === 'time-after-hours' ? ' אחרי סגירה' : '';
       earnBadge = days <= 2
         ? `<span class="badge-earnings">🔔 ${dateStr}${timeStr} (${days} ימים!)</span>`
-        : `<span style="font-size:0.82rem">${dateStr}${timeStr}<br><small style="color:#aaa">${days} ימים</small></span>`;
+        : `<strong style="font-size:0.88rem">${dateStr}</strong><span style="font-size:0.78rem;color:var(--text-muted)"> ${timeStr}<br>${days} ימים</span>`;
     }
 
     // News
@@ -2149,24 +2221,132 @@ function renderResearchTable(dataArr) {
     const tr = document.createElement('tr');
     if (d.daysToEarnings != null && d.daysToEarnings <= 2) tr.className = 'research-earnings-soon';
 
+    const hasSummary = !!STATE.aiSummaries[d.symbol];
     tr.innerHTML = `
-      <td class="col-symbol" style="cursor:pointer"><div>${escHtml(d.symbol)}</div></td>
-      <td class="col-name" style="font-size:0.82rem">${escHtml(name)}</td>
+      <td class="col-research-sym" style="cursor:pointer">
+        <strong style="direction:ltr;display:block">${escHtml(d.symbol)}</strong>
+        <span class="col-research-name">${escHtml(name)}</span>
+      </td>
       <td class="col-price" style="direction:ltr">${price != null ? fmtPrice(price, 'USD') : '—'}</td>
-      <td>${maBadge}</td>
-      <td>${earnBadge}</td>
-      <td class="research-col-news">${newsHtml}</td>
+      <td class="col-research-ma">${maBadge}</td>
+      <td class="col-research-earn">${earnBadge}</td>
+      <td class="col-research-news">${newsHtml}</td>
+      <td class="col-research-ai" style="text-align:center">
+        <button class="btn-ai" data-symbol="${escHtml(d.symbol)}" title="סיכום AI">${hasSummary ? '✕' : '🤖'}</button>
+      </td>
     `;
-    tr.addEventListener('click', () => openChartModal(d.symbol, name));
+    tr.addEventListener('click', e => {
+      if (!e.target.closest('.btn-ai')) openChartModal(d.symbol, name);
+    });
     tbody.appendChild(tr);
+
+    // Show saved AI summary if exists
+    if (hasSummary) {
+      const saved = STATE.aiSummaries[d.symbol];
+      const aiRow = document.createElement('tr');
+      aiRow.className = 'ai-summary-row';
+      aiRow.dataset.aiSymbol = d.symbol;
+      const dateStr = new Date(saved.updatedAt).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+      aiRow.innerHTML = `<td colspan="7" class="ai-summary-cell">
+        <span class="ai-label">🤖 ${escHtml(d.symbol)}</span><span class="ai-date">· ${dateStr}</span>
+        ${escHtml(saved.summary)}
+      </td>`;
+      tbody.appendChild(aiRow);
+    }
   });
 
   if (dataArr.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#aaa">אין נתוני מחקר</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#aaa">אין נתוני מחקר</td></tr>`;
   }
 }
 
+async function saveAISummary(symbol, summary) {
+  const rec = { summary, updatedAt: new Date().toISOString() };
+  STATE.aiSummaries[symbol] = rec;
+  try { await db.collection('ai_summaries').doc(symbol).set(rec); } catch(e) { /* non-critical */ }
+}
+
+async function askAI(symbol, btn) {
+  const tr = btn.closest('tr');
+  const next = tr.nextElementSibling;
+  // Toggle: if summary row exists → hide/show
+  if (next && next.classList.contains('ai-summary-row') && next.dataset.aiSymbol === symbol) {
+    const hidden = next.style.display === 'none';
+    next.style.display = hidden ? '' : 'none';
+    btn.textContent = hidden ? '✕' : '🤖';
+    return;
+  }
+  // Fetch new AI summary
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  try {
+    const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(symbol)}`,
+                            { signal: AbortSignal.timeout(25000) });
+    const data = await res.json();
+    if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר בשרת');
+    if (data.error) throw new Error(data.error);
+    await saveAISummary(symbol, data.summary);
+    const dateStr = new Date().toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+    const aiRow = document.createElement('tr');
+    aiRow.className = 'ai-summary-row';
+    aiRow.dataset.aiSymbol = symbol;
+    aiRow.innerHTML = `<td colspan="7" class="ai-summary-cell">
+      <span class="ai-label">🤖 ${escHtml(symbol)}</span><span class="ai-date">· ${dateStr}</span>
+      ${escHtml(data.summary)}
+    </td>`;
+    tr.after(aiRow);
+    btn.textContent = '✕';
+  } catch(e) {
+    btn.textContent = '⚠️';
+    btn.title = e.message;
+    setTimeout(() => { btn.textContent = '🤖'; btn.title = 'סיכום AI'; btn.disabled = false; }, 4000);
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = false;
+}
+
+async function fetchAllAI() {
+  const btn = document.getElementById('btn-ai-all');
+  if (!btn) return;
+  const allSymbols = STATE.watchlist
+    .filter(i => i.category === 'מניות חול' || i.category === 'מעקב')
+    .map(i => i.symbol);
+  const missing = allSymbols.filter(s => !STATE.aiSummaries[s]);
+  if (missing.length === 0) {
+    btn.textContent = '✓ הכל קיים';
+    setTimeout(() => { btn.textContent = '🤖 הכל'; }, 3000);
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = `⏳ ${missing.length}...`;
+  try {
+    const res = await fetch(`/proxy/ai-summary-bulk?symbols=${missing.map(encodeURIComponent).join(',')}`,
+                            { signal: AbortSignal.timeout(missing.length * 18000) });
+    const results = await res.json();
+    if (!Array.isArray(results)) {
+      if (results.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר בשרת');
+      throw new Error(JSON.stringify(results));
+    }
+    for (const item of results) {
+      if (item.summary) await saveAISummary(item.symbol, item.summary);
+    }
+    // Re-render with fresh summaries
+    const cached = allSymbols.map(s => STATE.researchData[s]).filter(Boolean);
+    renderResearchTable(cached);
+  } catch(e) {
+    btn.textContent = '⚠️';
+    btn.title = e.message;
+    setTimeout(() => { btn.textContent = '🤖 הכל'; btn.disabled = false; }, 4000);
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = false;
+  btn.textContent = '🤖 הכל';
+}
+
 function restoreStandardThead() {
+  document.querySelector('.market-table')?.classList.remove('research-mode');
   const thead = document.getElementById('market-thead');
   if (thead) thead.innerHTML = `
     <tr>
