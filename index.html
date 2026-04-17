@@ -2616,7 +2616,21 @@ function updateJumpBar(symbols) {
     const el = document.getElementById('rrow-' + sym);
     if (!el) return;
 
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const cards    = document.getElementById('research-cards');
+    const tableWrap = document.getElementById('market-table-wrap');
+    const isMobile = cards && getComputedStyle(cards).display !== 'none';
+    const scroller = isMobile ? cards : tableWrap;
+
+    if (scroller) {
+      const thead  = isMobile ? null : scroller.querySelector('thead');
+      const theadH = thead ? thead.getBoundingClientRect().height : 0;
+      const cRect  = scroller.getBoundingClientRect();
+      const eRect  = el.getBoundingClientRect();
+      scroller.scrollTo({
+        top: scroller.scrollTop + (eRect.top - cRect.top) - theadH - 4,
+        behavior: 'smooth'
+      });
+    }
 
     el.style.outline = '3px solid #1976d2';
     setTimeout(() => { el.style.outline = ''; }, 2000);
