@@ -1049,7 +1049,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">MaakavStocks</div>
+      <div class="toolbar-title">מניות</div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1073,7 +1073,7 @@
   <div class="filter-bar" id="filter-bar"></div>
   <div class="jump-bar" id="jump-bar" style="display:none">
     <select class="filter-select" id="jump-select">
-      <option value="">↓ קפוץ למניה</option>
+      <option value="">בחר</option>
     </select>
   </div>
 </div>
@@ -2588,7 +2588,7 @@ function updateJumpBar(symbols) {
   if (!jumpBar || !sel) return;
   if (!symbols || symbols.length === 0) { jumpBar.style.display = 'none'; return; }
 
-  sel.innerHTML = '<option value="">↓ קפוץ למניה</option>';
+  sel.innerHTML = '<option value="">בחר</option>';
   symbols.forEach(sym => {
     const opt = document.createElement('option');
     opt.value = sym;
@@ -2605,14 +2605,14 @@ function updateJumpBar(symbols) {
     const el = document.getElementById('rrow-' + sym);
     if (!el) return;
 
-    // Find the scrollable container (cards on mobile, table-wrap on desktop)
     const scroller = document.getElementById('research-cards');
     const tableWrap = document.getElementById('market-table-wrap');
-    const useScroller = scroller && getComputedStyle(scroller).display !== 'none' ? scroller : tableWrap;
+    const useScroller = (scroller && getComputedStyle(scroller).display !== 'none') ? scroller : tableWrap;
 
     if (useScroller) {
-      const top = el.offsetTop - useScroller.offsetTop - 8;
-      useScroller.scrollTo({ top, behavior: 'smooth' });
+      const cRect = useScroller.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      useScroller.scrollTo({ top: useScroller.scrollTop + eRect.top - cRect.top - 8, behavior: 'smooth' });
     }
 
     el.style.outline = '3px solid #1976d2';
