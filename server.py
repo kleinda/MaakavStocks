@@ -6,7 +6,6 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib.request
 import urllib.parse
-import http.cookiejar
 import json
 import os
 import sys
@@ -33,27 +32,6 @@ HEADERS = {
 }
 
 MARKET_SYMBOLS = ["QQQ", "SPY", "DIA", "IWM", "BTC-USD", "ETH-USD", "TA35.TA", "TA90.TA"]
-
-# ── Yahoo Finance session (crumb + cookies) ──────────────────────────────────
-_cookie_jar  = http.cookiejar.CookieJar()
-_yf_opener   = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(_cookie_jar))
-_yahoo_crumb = None
-
-def _init_yahoo_crumb():
-    global _yahoo_crumb
-    try:
-        _yf_opener.open(urllib.request.Request('https://finance.yahoo.com/', headers=HEADERS), timeout=15)
-        req = urllib.request.Request(
-            'https://query1.finance.yahoo.com/v1/test/getcrumb',
-            headers={**HEADERS, 'Accept': 'text/plain'}
-        )
-        with _yf_opener.open(req, timeout=8) as r:
-            _yahoo_crumb = r.read().decode('utf-8').strip()
-        print(f"[yahoo] crumb OK ({_yahoo_crumb[:6]}...)", file=sys.stderr)
-    except Exception as e:
-        print(f"[yahoo] crumb failed: {e}", file=sys.stderr)
-
-_init_yahoo_crumb()
 
 def fetch_quote(symbol):
     """Fetch real-time quote + daily change + pre/after-hours price."""
@@ -132,16 +110,19 @@ def _fetch_nasdaq_day(args):
     return matches
 
 
-def fetch_nasdaq_earnings(symbols_set, days_ahead=45):
+def fetch_nasdaq_earnings(symbols_set, days_ahead=21):
     """Fetch earnings dates from Nasdaq calendar — parallel requests."""
     today = datetime.date.today()
     days = [(i, today + datetime.timedelta(days=i), symbols_set) for i in range(days_ahead)]
     result = {}
-    with ThreadPoolExecutor(max_workers=10) as ex:
-        for matches in ex.map(_fetch_nasdaq_day, days, timeout=25):
-            for sym, val in matches.items():
-                if sym not in result:
-                    result[sym] = val
+    try:
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for matches in ex.map(_fetch_nasdaq_day, days, timeout=18):
+                for sym, val in matches.items():
+                    if sym not in result:
+                        result[sym] = val
+    except Exception as e:
+        print(f"[nasdaq] earnings fetch error: {e}", file=sys.stderr)
     return result
 
 
@@ -174,32 +155,6 @@ def fetch_research(symbol):
                 result["ma150Pct"]   = round((price - ma150) / ma150 * 100, 2)
     except Exception as e:
         print(f"[research] chart error {symbol}: {e}", file=sys.stderr)
-
-    # 2b. Earnings date — calendarEvents with crumb
-    if _yahoo_crumb:
-        try:
-            crumb_q = urllib.parse.quote(_yahoo_crumb)
-            url_e = (f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{symbol}"
-                     f"?modules=calendarEvents&crumb={crumb_q}")
-            req_e = urllib.request.Request(url_e, headers=HEADERS)
-            with _yf_opener.open(req_e, timeout=8) as r_e:
-                data_e = json.loads(r_e.read())
-            earn_list = (data_e.get("quoteSummary", {})
-                               .get("result", [{}])[0]
-                               .get("calendarEvents", {})
-                               .get("earnings", {})
-                               .get("earningsDate", []))
-            for ed in earn_list:
-                earn_ts = ed.get("raw")
-                if earn_ts:
-                    earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
-                    days = (earn_date - today).days
-                    if days >= -1:
-                        result["earningsDate"]   = earn_ts
-                        result["daysToEarnings"] = max(days, 0)
-                        break
-        except Exception as e:
-            print(f"[earn] {symbol}: {e}", file=sys.stderr)
 
     # 2. News headlines (last 48h)
     try:
@@ -384,6 +339,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_error(400, 'Missing symbols')
                 return
             try:
+                # Fetch MA150 + news per symbol in parallel
                 research_map = {}
                 with ThreadPoolExecutor(max_workers=min(len(symbols), 8)) as ex:
                     futures = {ex.submit(fetch_research, sym): sym for sym in symbols}
@@ -393,6 +349,11 @@ class Handler(SimpleHTTPRequestHandler):
                             research_map[sym] = fut.result()
                         except Exception:
                             research_map[sym] = {"symbol": sym}
+                # Fetch earnings from Nasdaq calendar once for all symbols
+                earn_map = fetch_nasdaq_earnings(set(symbols))
+                for sym, earn_data in earn_map.items():
+                    if sym in research_map:
+                        research_map[sym].update(earn_data)
                 result = [research_map[sym] for sym in symbols if sym in research_map]
                 body = json.dumps(result, ensure_ascii=False).encode('utf-8')
                 self.send_response(200)
