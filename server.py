@@ -149,18 +149,52 @@ def fetch_research(symbol):
             if price:
                 result["aboveMa150"] = price > ma150
                 result["ma150Pct"]   = round((price - ma150) / ma150 * 100, 2)
-        # Earnings from chart meta — no extra request needed
-        earn_ts = meta.get("earningsTimestampStart") or meta.get("earningsTimestamp")
-        if earn_ts:
-            earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
-            days = (earn_date - today).days
-            if days >= 0:  # only future dates (past = stale, ignore)
-                result["earningsDate"]   = earn_ts
-                result["daysToEarnings"] = days
-                result["earningsTime"]   = ""
     except Exception as e:
         import sys
         print(f"[research] chart error {symbol}: {e}", file=sys.stderr)
+
+    # 2b. Earnings date — calendarEvents (primary), v7/quote (fallback)
+    import sys
+    try:
+        url_e = ("https://query1.finance.yahoo.com/v10/finance/quoteSummary/" + symbol
+                 + "?modules=calendarEvents")
+        req_e = urllib.request.Request(url_e, headers=HEADERS)
+        with urllib.request.urlopen(req_e, timeout=8) as r_e:
+            data_e = json.loads(r_e.read())
+        earn_list = (data_e.get("quoteSummary", {})
+                           .get("result", [{}])[0]
+                           .get("calendarEvents", {})
+                           .get("earnings", {})
+                           .get("earningsDate", []))
+        for ed in earn_list:
+            earn_ts = ed.get("raw")
+            if earn_ts:
+                earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
+                days = (earn_date - today).days
+                if days >= -1:
+                    result["earningsDate"]   = earn_ts
+                    result["daysToEarnings"] = max(days, 0)
+                    break
+    except Exception as e:
+        print(f"[earn-cal] {symbol}: {e}", file=sys.stderr)
+
+    # fallback: v7/finance/quote
+    if result["earningsDate"] is None:
+        try:
+            url_q = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" + symbol
+            req_q = urllib.request.Request(url_q, headers=HEADERS)
+            with urllib.request.urlopen(req_q, timeout=8) as r_q:
+                data_q = json.loads(r_q.read())
+            qr = (data_q.get("quoteResponse", {}).get("result") or [{}])[0]
+            earn_ts = qr.get("earningsTimestampStart") or qr.get("earningsTimestamp")
+            if earn_ts:
+                earn_date = datetime.datetime.utcfromtimestamp(earn_ts).date()
+                days = (earn_date - today).days
+                if days >= -1:
+                    result["earningsDate"]   = earn_ts
+                    result["daysToEarnings"] = max(days, 0)
+        except Exception as e:
+            print(f"[earn-v7] {symbol}: {e}", file=sys.stderr)
 
     # 2. News headlines (last 48h)
     try:
