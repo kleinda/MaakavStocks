@@ -2453,7 +2453,9 @@ async function askAI(symbol, btn) {
       div.style.display = '';
     } catch(e) {
       btn.textContent = '⚠️';
-      setTimeout(() => { btn.textContent = '🤖 AI'; btn.disabled = false; }, 4000);
+      btn.title = e.message;
+      alert('שגיאת AI: ' + e.message);
+      setTimeout(() => { btn.textContent = '🤖 AI'; btn.title = ''; btn.disabled = false; }, 4000);
       btn.disabled = false; return;
     }
     btn.textContent = '🤖 AI';
@@ -2645,8 +2647,9 @@ function updateJumpBar(symbols) {
     const isMobile  = cards && getComputedStyle(cards).display !== 'none';
 
     if (isMobile) {
-      // scrollIntoView scrolls #research-cards (overflow-y:auto); scroll-margin-top:8px adds gap
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const cRect = cards.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      cards.scrollTop = cards.scrollTop + (eRect.top - cRect.top) - 8;
     } else {
       const thead  = tableWrap.querySelector('thead');
       const theadH = thead ? thead.getBoundingClientRect().height : 0;
