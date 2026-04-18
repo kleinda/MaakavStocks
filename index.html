@@ -2676,21 +2676,20 @@ function updateJumpBar(symbols) {
     if (!sym) return;
     sel.value = '';
 
-    const el = document.getElementById('rrow-' + sym);
-    if (!el) return;
-
     const cards     = document.getElementById('research-cards');
     const tableWrap = document.getElementById('market-table-wrap');
     const isMobile  = cards && getComputedStyle(cards).display !== 'none';
 
+    // On mobile search inside #research-cards, on desktop search in table — avoid duplicate id collision
+    const el = isMobile
+      ? cards.querySelector('#rrow-' + sym)
+      : document.getElementById('rrow-' + sym);
+    if (!el) return;
+
     if (isMobile) {
       const cRect = cards.getBoundingClientRect();
       const eRect = el.getBoundingClientRect();
-      const delta = eRect.top - cRect.top - 8;
-      const before = cards.scrollTop;
-      cards.scrollTop = before + delta;
-      const after = cards.scrollTop;
-      alert(`sym=${sym}\ncRect.top=${cRect.top.toFixed(0)}\neRect.top=${eRect.top.toFixed(0)}\ndelta=${delta.toFixed(0)}\nbefore=${before.toFixed(0)}\nafter=${after.toFixed(0)}\nscrollH=${cards.scrollHeight}\nclientH=${cards.clientHeight}`);
+      cards.scrollTop = cards.scrollTop + (eRect.top - cRect.top) - 8;
     } else {
       const thead  = tableWrap.querySelector('thead');
       const theadH = thead ? thead.getBoundingClientRect().height : 0;
