@@ -2647,9 +2647,7 @@ function updateJumpBar(symbols) {
     const isMobile  = cards && getComputedStyle(cards).display !== 'none';
 
     if (isMobile) {
-      const cRect = cards.getBoundingClientRect();
-      const eRect = el.getBoundingClientRect();
-      cards.scrollTop = cards.scrollTop + (eRect.top - cRect.top) - 8;
+      cards.scrollTop = el.offsetTop - 8;
     } else {
       const thead  = tableWrap.querySelector('thead');
       const theadH = thead ? thead.getBoundingClientRect().height : 0;

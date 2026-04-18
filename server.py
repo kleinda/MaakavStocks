@@ -24,6 +24,7 @@ if os.path.exists(_env_file):
 
 PORT = int(os.environ.get('PORT', 3000))
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+print(f"[init] OPENAI_API_KEY {'SET (' + OPENAI_API_KEY[:8] + '...)' if OPENAI_API_KEY else 'NOT SET'}", file=sys.stderr)
 YAHOO_BASE = 'https://query2.finance.yahoo.com/v8/finance/chart/'
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
