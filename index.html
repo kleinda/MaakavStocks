@@ -947,6 +947,9 @@
     .btn-ai:disabled { opacity: 0.6; cursor: default; }
     body.dark .btn-ai { border-color: #3949ab; color: #90caf9; }
     body.dark .btn-ai:hover:not(:disabled) { background: #1e2235; }
+    .btn-ai-close-desktop { background: none; border: none; cursor: pointer; font-size: 0.75rem;
+                            color: #aaa; padding: 0 2px; margin-right: 2px; }
+    .btn-ai-close-desktop:hover { color: #e53935; }
     .ai-summary-row td { padding: 0 !important; }
     .ai-summary-cell { background: #f0f7ff; padding: 10px 18px !important;
                        font-size: 0.85rem; line-height: 1.65; color: #1a237e;
@@ -2182,6 +2185,17 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
   const aiBtn = e.target.closest('.btn-ai');
   if (aiBtn) { e.stopPropagation(); askAI(aiBtn.dataset.symbol, aiBtn); return; }
 
+  const aiClose = e.target.closest('.btn-ai-close-desktop');
+  if (aiClose) {
+    e.stopPropagation();
+    const sym = aiClose.dataset.symbol;
+    const tr2 = aiClose.closest('tr');
+    const next = tr2?.nextElementSibling;
+    if (next && next.classList.contains('ai-summary-row') && next.dataset.aiSymbol === sym) next.remove();
+    aiClose.remove();
+    return;
+  }
+
   if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch')) return;
   const tr = e.target.closest('tr.mrow');
   if (!tr) return;
@@ -2235,11 +2249,13 @@ async function loadAndRenderResearch() {
       <th class="col-research-ma">MA150</th>
       <th class="col-research-earn">דוח קרוב</th>
       <th class="col-research-news">חדשות (48 שע')</th>
-      <th class="col-research-ai" style="width:84px;text-align:center">
-        <button class="btn-ai-all" id="btn-ai-all">🤖 הכל</button>
+      <th class="col-research-ai" style="width:100px;text-align:center;white-space:nowrap">
+        <button class="btn-ai-all" id="btn-ai-all" title="סיכום AI למניות חסרות">🤖 הכל</button>
+        <button class="btn-ai-all" id="btn-ai-refresh" title="רענן סיכום AI לכולם" style="margin-right:3px">🔄</button>
       </th>
     </tr>`;
-    document.getElementById('btn-ai-all')?.addEventListener('click', fetchAllAI);
+    document.getElementById('btn-ai-all')?.addEventListener('click', () => fetchAllAI(false));
+    document.getElementById('btn-ai-refresh')?.addEventListener('click', () => fetchAllAI(true));
   }
   tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען...</td></tr>`;
   cards.innerHTML = `<div style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</div>`;
@@ -2336,8 +2352,9 @@ function _renderResearchTableDesktop(sorted) {
       <td class="col-research-ma">${maBadge}</td>
       <td class="col-research-earn">${earnBadge}</td>
       <td class="col-research-news">${newsHtml || '—'}</td>
-      <td class="col-research-ai" style="text-align:center">
-        <button class="btn-ai" data-symbol="${escHtml(d.symbol)}" title="סיכום AI">${hasSummary ? '✕' : '🤖'}</button>
+      <td class="col-research-ai" style="text-align:center;white-space:nowrap">
+        <button class="btn-ai" data-symbol="${escHtml(d.symbol)}" title="סיכום AI">🤖</button>
+        ${hasSummary ? `<button class="btn-ai-close-desktop" data-symbol="${escHtml(d.symbol)}" title="סגור">✕</button>` : ''}
       </td>`;
     tr.addEventListener('click', e => { if (!e.target.closest('.btn-ai')) openChartModal(d.symbol, name); });
     tbody.appendChild(tr);
@@ -2364,9 +2381,18 @@ function _renderResearchCards(sorted) {
   const allBtn = document.createElement('button');
   allBtn.className = 'rc-ai-all';
   allBtn.id = 'btn-ai-all';
-  allBtn.textContent = '🤖 ניתוח AI לכולם';
-  allBtn.addEventListener('click', fetchAllAI);
+  allBtn.textContent = '🤖 AI לכולם';
+  allBtn.title = 'סיכום AI למניות חסרות';
+  allBtn.addEventListener('click', () => fetchAllAI(false));
   cards.appendChild(allBtn);
+
+  const refreshBtn = document.createElement('button');
+  refreshBtn.className = 'rc-ai-all';
+  refreshBtn.id = 'btn-ai-refresh';
+  refreshBtn.textContent = '🔄 עדכן הכל';
+  refreshBtn.title = 'רענן סיכום AI לכולם מחדש';
+  refreshBtn.addEventListener('click', () => fetchAllAI(true));
+  cards.appendChild(refreshBtn);
 
   if (sorted.length === 0) {
     cards.innerHTML += `<div style="text-align:center;padding:20px;color:#aaa">אין נתוני מחקר</div>`;
@@ -2463,15 +2489,8 @@ async function askAI(symbol, btn) {
     return;
   }
 
-  // Desktop table mode
+  // Desktop table mode — always fetch fresh summary
   const tr = btn.closest('tr');
-  const next = tr?.nextElementSibling;
-  if (next && next.classList.contains('ai-summary-row') && next.dataset.aiSymbol === symbol) {
-    const hidden = next.style.display === 'none';
-    next.style.display = hidden ? '' : 'none';
-    btn.textContent = hidden ? '✕' : '🤖';
-    return;
-  }
   btn.disabled = true; btn.textContent = '⏳';
   try {
     const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(symbol)}`,
@@ -2480,45 +2499,63 @@ async function askAI(symbol, btn) {
     if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר');
     if (data.error) throw new Error(data.error);
     await saveAISummary(symbol, data.summary);
+    // Remove existing AI row if any
+    const existing = tr.nextElementSibling;
+    if (existing && existing.classList.contains('ai-summary-row') && existing.dataset.aiSymbol === symbol) {
+      existing.remove();
+    }
     const aiRow = document.createElement('tr');
     aiRow.className = 'ai-summary-row';
     aiRow.dataset.aiSymbol = symbol;
     aiRow.innerHTML = `<td colspan="7" class="ai-summary-cell"><span class="ai-label">🤖 ${escHtml(symbol)}</span><span class="ai-date">· ${dateStr}</span> ${escHtml(data.summary)}</td>`;
     tr.after(aiRow);
-    btn.textContent = '✕';
+    // Ensure close button exists
+    const td = tr.querySelector('.col-research-ai');
+    if (td && !td.querySelector('.btn-ai-close-desktop')) {
+      const cb = document.createElement('button');
+      cb.className = 'btn-ai-close-desktop';
+      cb.dataset.symbol = symbol;
+      cb.title = 'סגור';
+      cb.textContent = '✕';
+      td.appendChild(cb);
+    }
   } catch(e) {
     btn.textContent = '⚠️';
     btn.title = e.message;
+    alert('שגיאת AI: ' + e.message);
     setTimeout(() => { btn.textContent = '🤖'; btn.title = 'סיכום AI'; btn.disabled = false; }, 4000);
     btn.disabled = false; return;
   }
+  btn.textContent = '🤖';
   btn.disabled = false;
 }
 
-async function fetchAllAI() {
+async function fetchAllAI(forceAll = false) {
   const btn = document.getElementById('btn-ai-all');
   if (!btn) return;
   const allSymbols = STATE.watchlist
     .filter(i => i.category === 'מניות חול' || i.category === 'מעקב')
     .map(i => i.symbol);
-  const missing = allSymbols.filter(s => !STATE.aiSummaries[s]);
-  if (missing.length === 0) {
+  const toFetch = forceAll ? allSymbols : allSymbols.filter(s => !STATE.aiSummaries[s]);
+  if (toFetch.length === 0) {
     btn.textContent = '✓ הכל קיים';
     setTimeout(() => { btn.textContent = '🤖 הכל'; }, 3000);
     return;
   }
   btn.disabled = true;
-  btn.textContent = `⏳ ${missing.length}...`;
+  btn.textContent = `⏳ 0/${toFetch.length}`;
   try {
-    const res = await fetch(`/proxy/ai-summary-bulk?symbols=${missing.map(encodeURIComponent).join(',')}`,
-                            { signal: AbortSignal.timeout(missing.length * 18000) });
+    const res = await fetch(`/proxy/ai-summary-bulk?symbols=${toFetch.map(encodeURIComponent).join(',')}`,
+                            { signal: AbortSignal.timeout(toFetch.length * 18000) });
     const results = await res.json();
     if (!Array.isArray(results)) {
       if (results.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר בשרת');
       throw new Error(JSON.stringify(results));
     }
+    let done = 0;
     for (const item of results) {
-      if (item.summary) await saveAISummary(item.symbol, item.summary);
+      if (item.summary) { await saveAISummary(item.symbol, item.summary); done++; }
+      btn.textContent = `⏳ ${done}/${toFetch.length}`;
     }
     // Re-render with fresh summaries
     const cached = allSymbols.map(s => STATE.researchData[s]).filter(Boolean);
