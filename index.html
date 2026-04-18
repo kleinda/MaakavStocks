@@ -2302,8 +2302,8 @@ function _buildResearchBadges(d) {
     const timeStr = d.earningsTime === 'time-pre-market' ? ' לפני פתיחה' :
                     d.earningsTime === 'time-after-hours' ? ' אחרי סגירה' : '';
     earnBadge = days <= 2
-      ? `<span class="badge-earnings">🔔 ${dateStr}${timeStr} (${days} ימים!)</span>`
-      : `<strong style="font-size:0.88rem">${dateStr}</strong><span style="font-size:0.78rem;color:var(--text-muted)"> ${timeStr} · ${days} ימים</span>`;
+      ? `<span class="badge-earnings">🔔 דוח: ${dateStr}${timeStr} (${days} ימים!)</span>`
+      : `<span style="font-size:0.82rem">📅 דוח: <strong>${dateStr}</strong><span style="color:var(--text-muted)">${timeStr} · ${days} ימים</span></span>`;
   }
   // News
   let newsHtml = '';
