@@ -961,7 +961,7 @@
       .research-mode-active #research-cards    { display: flex !important; }
     }
     .rc { background: var(--bg-card, #fff); border: 1px solid #e0e0e0; border-radius: 10px;
-          padding: 10px 12px; }
+          padding: 10px 12px; scroll-margin-top: 8px; }
     body.dark .rc { background: #1a2035; border-color: #2d3748; }
     .rc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
     .rc-symbol { font-weight: 700; font-size: 1rem; direction: ltr; }
@@ -969,6 +969,10 @@
     .rc-price  { font-weight: 700; font-size: 0.95rem; direction: ltr; }
     .rc-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
     .rc-ai-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .btn-ai-close { background: none; border: 1px solid #ccc; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.8rem; color: #888; }
+    .btn-ai-close:hover { background: #fee; color: #c62828; border-color: #c62828; }
+    body.dark .btn-ai-close { border-color: #444; color: #aaa; }
+    body.dark .btn-ai-close:hover { background: #2a1010; color: #ef9a9a; }
     .rc-ai-summary { font-size: 0.82rem; line-height: 1.55; color: #1a237e;
                      background: #f0f7ff; border-right: 3px solid #1976d2;
                      padding: 8px 10px; border-radius: 6px; margin-top: 6px;
@@ -2187,6 +2191,17 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
 
 // AI button clicks inside research cards (mobile)
 document.getElementById('research-cards').addEventListener('click', function(e) {
+  // Close AI summary
+  const closeBtn = e.target.closest('.btn-ai-close');
+  if (closeBtn) {
+    e.stopPropagation();
+    const card = closeBtn.closest('.rc');
+    if (card) {
+      const summary = card.querySelector('.rc-ai-summary');
+      if (summary) summary.style.display = 'none';
+    }
+    return;
+  }
   const aiBtn = e.target.closest('.btn-ai');
   if (aiBtn) { e.stopPropagation(); askAI(aiBtn.dataset.symbol, aiBtn); }
 });
@@ -2386,7 +2401,8 @@ function _renderResearchCards(sorted) {
         ${earnBadge !== '—' ? earnBadge : ''}
       </div>
       <div class="rc-ai-row">
-        <button class="btn-ai" data-symbol="${escHtml(d.symbol)}">${hasSummary ? '✕ סגור' : '🤖 AI'}</button>
+        <button class="btn-ai" data-symbol="${escHtml(d.symbol)}">🤖 AI</button>
+        ${hasSummary ? `<button class="btn-ai-close" data-symbol="${escHtml(d.symbol)}" title="סגור AI">✕</button>` : ''}
       </div>
       ${aiSummaryHtml}`;
 
@@ -2407,14 +2423,7 @@ async function askAI(symbol, btn) {
   // Detect context by parent element
   const card = btn.closest('.rc');
   if (card) {
-    // Mobile card mode
-    const existing = card.querySelector('.rc-ai-summary');
-    if (existing) {
-      const hidden = existing.style.display === 'none';
-      existing.style.display = hidden ? '' : 'none';
-      btn.textContent = hidden ? '✕ סגור' : '🤖 AI';
-      return;
-    }
+    // Mobile card mode — always fetches / re-fetches
     btn.disabled = true; btn.textContent = '⏳';
     try {
       const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(symbol)}`,
@@ -2423,16 +2432,30 @@ async function askAI(symbol, btn) {
       if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר');
       if (data.error) throw new Error(data.error);
       await saveAISummary(symbol, data.summary);
-      const div = document.createElement('div');
-      div.className = 'rc-ai-summary';
+      let div = card.querySelector('.rc-ai-summary');
+      if (!div) {
+        div = document.createElement('div');
+        div.className = 'rc-ai-summary';
+        card.appendChild(div);
+        // Add close button if not already there
+        const aiRow = card.querySelector('.rc-ai-row');
+        if (aiRow && !aiRow.querySelector('.btn-ai-close')) {
+          const closeBtn = document.createElement('button');
+          closeBtn.className = 'btn-ai-close';
+          closeBtn.dataset.symbol = symbol;
+          closeBtn.title = 'סגור AI';
+          closeBtn.textContent = '✕';
+          aiRow.appendChild(closeBtn);
+        }
+      }
       div.innerHTML = `<strong>🤖 ${escHtml(symbol)}</strong> <span class="rc-ai-date">· ${dateStr}</span><br>${escHtml(data.summary)}`;
-      card.appendChild(div);
-      btn.textContent = '✕ סגור';
+      div.style.display = '';
     } catch(e) {
       btn.textContent = '⚠️';
       setTimeout(() => { btn.textContent = '🤖 AI'; btn.disabled = false; }, 4000);
       btn.disabled = false; return;
     }
+    btn.textContent = '🤖 AI';
     btn.disabled = false;
     return;
   }
@@ -2600,7 +2623,7 @@ function updateJumpBar(symbols) {
   if (!symbols || symbols.length === 0) { jumpBar.style.display = 'none'; return; }
 
   sel.innerHTML = '<option value="">בחר</option>';
-  symbols.forEach(sym => {
+  [...symbols].sort((a, b) => a.localeCompare(b)).forEach(sym => {
     const opt = document.createElement('option');
     opt.value = sym;
     opt.textContent = sym;
@@ -2616,18 +2639,20 @@ function updateJumpBar(symbols) {
     const el = document.getElementById('rrow-' + sym);
     if (!el) return;
 
-    const cards    = document.getElementById('research-cards');
+    const cards     = document.getElementById('research-cards');
     const tableWrap = document.getElementById('market-table-wrap');
-    const isMobile = cards && getComputedStyle(cards).display !== 'none';
-    const scroller = isMobile ? cards : tableWrap;
+    const isMobile  = cards && getComputedStyle(cards).display !== 'none';
 
-    if (scroller) {
-      const thead  = isMobile ? null : scroller.querySelector('thead');
+    if (isMobile) {
+      // scrollIntoView scrolls #research-cards (overflow-y:auto); scroll-margin-top:8px adds gap
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      const thead  = tableWrap.querySelector('thead');
       const theadH = thead ? thead.getBoundingClientRect().height : 0;
-      const cRect  = scroller.getBoundingClientRect();
+      const cRect  = tableWrap.getBoundingClientRect();
       const eRect  = el.getBoundingClientRect();
-      scroller.scrollTo({
-        top: scroller.scrollTop + (eRect.top - cRect.top) - theadH - 4,
+      tableWrap.scrollTo({
+        top: tableWrap.scrollTop + (eRect.top - cRect.top) - theadH - 4,
         behavior: 'smooth'
       });
     }
