@@ -2686,7 +2686,11 @@ function updateJumpBar(symbols) {
     if (isMobile) {
       const cRect = cards.getBoundingClientRect();
       const eRect = el.getBoundingClientRect();
-      cards.scrollTop = cards.scrollTop + (eRect.top - cRect.top) - 8;
+      const delta = eRect.top - cRect.top - 8;
+      const before = cards.scrollTop;
+      cards.scrollTop = before + delta;
+      const after = cards.scrollTop;
+      alert(`sym=${sym}\ncRect.top=${cRect.top.toFixed(0)}\neRect.top=${eRect.top.toFixed(0)}\ndelta=${delta.toFixed(0)}\nbefore=${before.toFixed(0)}\nafter=${after.toFixed(0)}\nscrollH=${cards.scrollHeight}\nclientH=${cards.clientHeight}`);
     } else {
       const thead  = tableWrap.querySelector('thead');
       const theadH = thead ? thead.getBoundingClientRect().height : 0;
