@@ -2684,9 +2684,7 @@ function updateJumpBar(symbols) {
     const isMobile  = cards && getComputedStyle(cards).display !== 'none';
 
     if (isMobile) {
-      console.log('[jump] mobile el:', el.id, 'offsetTop:', el.offsetTop, 'cards.scrollTop:', cards.scrollTop, 'cards.scrollHeight:', cards.scrollHeight, 'cards.clientHeight:', cards.clientHeight);
-      cards.scrollTop = el.offsetTop - 8;
-      console.log('[jump] after set, cards.scrollTop:', cards.scrollTop);
+      alert(`el=${el.id}\noffsetTop=${el.offsetTop}\noffsetParent=${el.offsetParent?.id||el.offsetParent?.tagName}\nscrollH=${cards.scrollHeight}\nclientH=${cards.clientHeight}\nscrollTop=${cards.scrollTop}`);
     } else {
       const thead  = tableWrap.querySelector('thead');
       const theadH = thead ? thead.getBoundingClientRect().height : 0;
