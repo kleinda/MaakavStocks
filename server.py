@@ -50,17 +50,15 @@ def fetch_quote(symbol):
     name     = meta.get("longName") or meta.get("shortName") or symbol
     currency = meta.get("currency") or ""
 
-    # Compute change % from regularMarketChange (absolute, unambiguous)
-    abs_change = meta.get("regularMarketChange")
-    if abs_change is not None and price:
-        prev_price = price - abs_change
-        change_pct = (abs_change / prev_price * 100) if prev_price else None
-    else:
-        # Fallback: manual calculation from daily bars
+    # Previous close: try meta fields first (reliable for forex), fallback to daily bars
+    prev = (meta.get("regularMarketPreviousClose")
+            or meta.get("previousClose")
+            or meta.get("chartPreviousClose"))
+    if prev is None:
         closes_d = res_d["indicators"]["quote"][0].get("close", [])
         valid_d  = [c for c in closes_d if c is not None]
-        prev     = valid_d[-2] if len(valid_d) >= 2 else None
-        change_pct = ((price - prev) / prev * 100) if (price and prev) else None
+        prev = valid_d[-2] if len(valid_d) >= 2 else None
+    change_pct = ((price - prev) / prev * 100) if (price and prev) else None
 
     # 2. 1m intraday — pre/after-market detection
     pre_price  = None
