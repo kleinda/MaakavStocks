@@ -681,6 +681,7 @@
     .mrow-us        td { background: #fff5f7; }
     .mrow-il        td { background: #f1f8e9; }
     .mrow-crypto    td { background: #ede7f6; }
+    .mrow-forex     td { background: #e8f5e9; }
     .mrow-tech      td { background: #fffde7; }
     .mrow-watchlist  td { background: #fafafa; }
     .mrow-watch      td { background: #e0f7fa; }
@@ -863,6 +864,7 @@
     body.dark .mrow-us td       { background: #171a2b; }
     body.dark .mrow-il td       { background: #151d14; }
     body.dark .mrow-crypto td   { background: #1a1629; }
+    body.dark .mrow-forex td    { background: #0d1f10; }
     body.dark .mrow-tech td     { background: #1e1e12; }
     body.dark .mrow-watchlist td { background: #141620; }
     body.dark .mrow-watch td     { background: #0a1f22; }
@@ -1827,14 +1829,16 @@ const MARKET_META = {
   'IWM':     { name: 'ראסל 2000',  group: 'us',     category: 'מדדים ותעודות סל' },
   'TA35.TA': { name: 'ת"א 35',     group: 'il',     category: 'מדדים ותעודות סל' },
   'TA90.TA': { name: 'ת"א 90',     group: 'il',     category: 'מדדים ותעודות סל' },
-  'BTC-USD': { name: 'ביטקוין',    group: 'crypto', category: 'מטבעות' },
-  'ETH-USD': { name: 'איתריום',    group: 'crypto', category: 'מטבעות' },
+  'BTC-USD':  { name: 'ביטקוין',    group: 'crypto', category: 'מטבעות' },
+  'ETH-USD':  { name: 'איתריום',    group: 'crypto', category: 'מטבעות' },
+  'EURILS=X': { name: 'אירו/שקל',   group: 'forex',  category: 'מטבעות' },
 };
 
 function fmtMarketPrice(price, symbol) {
   if (price == null) return '—';
   const isCrypto = symbol === 'BTC-USD' || symbol === 'ETH-USD';
   if (isCrypto) return '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  if (symbol.endsWith('ILS=X')) return '₪' + price.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
   return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 

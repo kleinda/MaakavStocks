@@ -32,7 +32,7 @@ HEADERS = {
     'Accept-Language': 'en-US,en;q=0.9',
 }
 
-MARKET_SYMBOLS = ["QQQ", "SPY", "DIA", "IWM", "BTC-USD", "ETH-USD", "TA35.TA", "TA90.TA"]
+MARKET_SYMBOLS = ["QQQ", "SPY", "DIA", "IWM", "BTC-USD", "ETH-USD", "TA35.TA", "TA90.TA", "EURILS=X"]
 
 def fetch_quote(symbol):
     """Fetch real-time quote + daily change + pre/after-hours price."""
@@ -50,11 +50,16 @@ def fetch_quote(symbol):
     name     = meta.get("longName") or meta.get("shortName") or symbol
     currency = meta.get("currency") or ""
 
-    # Previous close = second-to-last valid daily bar (skips holidays correctly)
-    closes_d = res_d["indicators"]["quote"][0].get("close", [])
-    valid_d  = [c for c in closes_d if c is not None]
-    prev     = valid_d[-2] if len(valid_d) >= 2 else None
-    change_pct = ((price - prev) / prev * 100) if (price and prev) else None
+    # Use Yahoo's official change % (most accurate for all asset types incl. forex)
+    yahoo_pct = meta.get("regularMarketChangePercent")
+    if yahoo_pct is not None:
+        change_pct = yahoo_pct
+    else:
+        # Fallback: manual calculation from daily bars
+        closes_d = res_d["indicators"]["quote"][0].get("close", [])
+        valid_d  = [c for c in closes_d if c is not None]
+        prev     = valid_d[-2] if len(valid_d) >= 2 else None
+        change_pct = ((price - prev) / prev * 100) if (price and prev) else None
 
     # 2. 1m intraday — pre/after-market detection
     pre_price  = None
