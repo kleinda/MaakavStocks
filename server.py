@@ -459,9 +459,10 @@ class Handler(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def end_headers(self):
-        # No-cache for HTML/JS/CSS so browser always gets latest version
-        if self.path.split('?')[0].endswith(('.html', '.js', '.css', '.json')):
-            self.send_header('Cache-Control', 'no-store')
+        # No-cache for HTML/JS/CSS and root path so browser always gets latest version
+        p = self.path.split('?')[0]
+        if p in ('/', '') or p.endswith(('.html', '.js', '.css')):
+            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
             self.send_header('Pragma', 'no-cache')
             self.send_header('Expires', '0')
         super().end_headers()
