@@ -50,10 +50,11 @@ def fetch_quote(symbol):
     name     = meta.get("longName") or meta.get("shortName") or symbol
     currency = meta.get("currency") or ""
 
-    # Use Yahoo's official change % (most accurate for all asset types incl. forex)
-    yahoo_pct = meta.get("regularMarketChangePercent")
-    if yahoo_pct is not None:
-        change_pct = yahoo_pct
+    # Compute change % from regularMarketChange (absolute, unambiguous)
+    abs_change = meta.get("regularMarketChange")
+    if abs_change is not None and price:
+        prev_price = price - abs_change
+        change_pct = (abs_change / prev_price * 100) if prev_price else None
     else:
         # Fallback: manual calculation from daily bars
         closes_d = res_d["indicators"]["quote"][0].get("close", [])
