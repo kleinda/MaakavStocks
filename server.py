@@ -50,10 +50,15 @@ def fetch_quote(symbol):
     name     = meta.get("longName") or meta.get("shortName") or symbol
     currency = meta.get("currency") or ""
 
-    # Previous close: try meta fields first (reliable for forex), fallback to daily bars
-    prev = (meta.get("regularMarketPreviousClose")
-            or meta.get("previousClose")
-            or meta.get("chartPreviousClose"))
+    # Previous close:
+    # - Forex (=X): chartPreviousClose/previousClose are correct; bars method gives wrong values
+    # - Stocks/ETFs: second-to-last bar is correct; chartPreviousClose = 5d-ago close (wrong)
+    if symbol.endswith('=X'):
+        prev = (meta.get("regularMarketPreviousClose")
+                or meta.get("previousClose")
+                or meta.get("chartPreviousClose"))
+    else:
+        prev = None
     if prev is None:
         closes_d = res_d["indicators"]["quote"][0].get("close", [])
         valid_d  = [c for c in closes_d if c is not None]
