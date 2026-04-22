@@ -50,30 +50,28 @@ def fetch_quote(symbol):
     name     = meta.get("longName") or meta.get("shortName") or symbol
     currency = meta.get("currency") or ""
 
-    # Previous close:
-    # - Forex (=X): chartPreviousClose/previousClose are correct; bars method gives wrong values
-    # - Stocks/ETFs: second-to-last bar is correct; chartPreviousClose = 5d-ago close (wrong)
-    if symbol.endswith('=X'):
-        prev = (meta.get("regularMarketPreviousClose")
-                or meta.get("previousClose")
-                or meta.get("chartPreviousClose"))
-    else:
-        prev = None
-    if prev is None:
-        closes_d = res_d["indicators"]["quote"][0].get("close", [])
-        valid_d  = [c for c in closes_d if c is not None]
-        prev = valid_d[-2] if len(valid_d) >= 2 else None
-    change_pct = ((price - prev) / prev * 100) if (price and prev) else None
+    # Placeholder — prev_close resolved after 1m fetch (chartPreviousClose is accurate there)
+    prev_from_bars = None
+    closes_d = res_d["indicators"]["quote"][0].get("close", [])
+    valid_d  = [c for c in closes_d if c is not None]
+    if len(valid_d) >= 2:
+        prev_from_bars = valid_d[-2]
 
-    # 2. 1m intraday — pre/after-market detection
-    pre_price  = None
-    pre_change = None
+    # 2. 1m intraday — pre/after-market detection + accurate previous close
+    pre_price   = None
+    pre_change  = None
+    prev_close  = None  # from 1m/1d: chartPreviousClose = yesterday's official close
     try:
         url_m = base + symbol + "?interval=1m&range=1d&includePrePost=true"
         req2 = urllib.request.Request(url_m, headers=HEADERS)
         with urllib.request.urlopen(req2, timeout=10) as r2:
             data_m = json.loads(r2.read())
         res_m      = data_m["chart"]["result"][0]
+        meta_m     = res_m["meta"]
+        # chartPreviousClose from 1d range = yesterday's official close (same source as chart modal)
+        prev_close = (meta_m.get("chartPreviousClose")
+                      or meta_m.get("previousClose")
+                      or meta_m.get("regularMarketPreviousClose"))
         timestamps = res_m.get("timestamp", [])
         closes_m   = res_m["indicators"]["quote"][0].get("close", [])
         for t, c in reversed(list(zip(timestamps, closes_m))):
@@ -83,6 +81,9 @@ def fetch_quote(symbol):
                 break
     except Exception:
         pass  # pre-market optional
+
+    prev = prev_close or prev_from_bars
+    change_pct = ((price - prev) / prev * 100) if (price and prev) else None
 
     return {
         "symbol":    symbol,
