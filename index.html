@@ -364,6 +364,7 @@
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.45);
+      overflow-y: auto;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -382,6 +383,7 @@
       max-width: 420px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.22);
       animation: modalIn 0.25s ease;
+      margin: auto;
     }
 
     @keyframes modalIn {
@@ -1756,6 +1758,7 @@ async function askModalAI() {
   }
   btn.textContent = '🤖';
   btn.disabled = false;
+  setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 }
 
 function setValidationMsg(type, html) {
