@@ -476,6 +476,34 @@
     .btn-save:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(57,73,171,0.4); }
     .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    .btn-modal-ai {
+      background: none;
+      border: 1px solid #90caf9;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-modal-ai:hover:not(:disabled) { background: #e3f2fd; }
+    .btn-modal-ai:disabled { opacity: 0.4; cursor: not-allowed; }
+    body.dark .btn-modal-ai { border-color: #3949ab; }
+    body.dark .btn-modal-ai:hover:not(:disabled) { background: #1e2235; }
+
+    .modal-ai-result {
+      margin-top: 14px;
+      background: #f0f7ff;
+      border-right: 3px solid #1976d2;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      line-height: 1.65;
+      color: #1a237e;
+      white-space: pre-wrap;
+    }
+    .modal-ai-result.hidden { display: none; }
+    body.dark .modal-ai-result { background: #0d1a2e; color: #90caf9; border-right-color: #3f51b5; }
+
     .btn-cancel {
       background: #f0f0f0;
       color: var(--text-muted);
@@ -1181,8 +1209,10 @@
 
     <div class="modal-actions">
       <button class="btn-save" id="btn-save" disabled>שמור</button>
+      <button class="btn-modal-ai" id="btn-modal-ai" disabled title="סיכום AI — ללא שמירה">🤖</button>
       <button class="btn-cancel" id="btn-cancel">ביטול</button>
     </div>
+    <div id="modal-ai-result" class="modal-ai-result hidden"></div>
   </div>
 </div>
 
@@ -1693,12 +1723,39 @@ function openModal() {
   document.getElementById('input-category').value = 'מניות חול';
   setValidationMsg('', '');
   document.getElementById('btn-save').disabled = true;
+  document.getElementById('btn-modal-ai').disabled = true;
+  const aiRes = document.getElementById('modal-ai-result');
+  aiRes.textContent = '';
+  aiRes.classList.add('hidden');
   document.getElementById('modal-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('input-symbol').focus(), 100);
 }
 
 function closeModal() {
   document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+async function askModalAI() {
+  const sym = document.getElementById('input-symbol').value.trim().toUpperCase();
+  if (!sym) return;
+  const btn = document.getElementById('btn-modal-ai');
+  const box = document.getElementById('modal-ai-result');
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  box.classList.remove('hidden');
+  box.textContent = 'טוען סיכום AI...';
+  try {
+    const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(sym)}`,
+                            { signal: AbortSignal.timeout(25000) });
+    const data = await res.json();
+    if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר');
+    if (data.error) throw new Error(data.error);
+    box.textContent = data.summary;
+  } catch(e) {
+    box.textContent = '⚠️ ' + e.message;
+  }
+  btn.textContent = '🤖';
+  btn.disabled = false;
 }
 
 function setValidationMsg(type, html) {
@@ -1726,13 +1783,15 @@ document.getElementById('input-symbol').addEventListener('input', function() {
       _validSymbolData = result;
       setValidationMsg('valid', `✓ ${escHtml(result.name)} — ${fmtPrice(result.price, result.currency)}`);
       document.getElementById('btn-save').disabled = false;
+      document.getElementById('btn-modal-ai').disabled = false;
     } else if (result.error) {
       setValidationMsg('invalid', '⚠️ שגיאת רשת — לא ניתן לאמת. ניתן לשמור בכל זאת.');
-      // Allow save despite network error (user's risk)
       _validSymbolData = { valid: true, name: sym };
       document.getElementById('btn-save').disabled = false;
+      document.getElementById('btn-modal-ai').disabled = true;
     } else {
       setValidationMsg('invalid', '✗ הסמל לא נמצא. בדוק את האיות.');
+      document.getElementById('btn-modal-ai').disabled = true;
     }
   }, 700);
 });
@@ -1740,6 +1799,7 @@ document.getElementById('input-symbol').addEventListener('input', function() {
 document.getElementById('btn-save').addEventListener('click', handleSave);
 document.getElementById('btn-cancel').addEventListener('click', closeModal);
 document.getElementById('btn-open-modal').addEventListener('click', openModal);
+document.getElementById('btn-modal-ai').addEventListener('click', askModalAI);
 document.getElementById('modal-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
