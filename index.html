@@ -1472,7 +1472,7 @@ function getAllAssets() {
       preChange: d.preMarketChange ?? null,
       time: null,
       ytd: null,
-      group: item.category === 'מעקב' ? 'watch' : item.category === 'מניות ישראל' ? 'il-stocks' : item.symbol.endsWith('=F') ? 'commodity' : 'watchlist',
+      group: item.category === 'מעקב' ? 'watch' : item.category === 'מניות ישראל' ? 'il-stocks' : item.symbol.endsWith('=F') ? 'commodity' : item.symbol.endsWith('=X') ? 'forex' : 'watchlist',
       isWatchlist: true,
     });
   });
@@ -2324,8 +2324,8 @@ async function loadAndRenderResearch() {
         <button class="btn-ai-all" id="btn-ai-refresh" title="רענן סיכום AI לכולם" style="margin-right:3px">🔄</button>
       </th>
     </tr>`;
-    document.getElementById('btn-ai-all')?.addEventListener('click', () => fetchAllAI(false));
-    document.getElementById('btn-ai-refresh')?.addEventListener('click', () => fetchAllAI(true));
+    document.getElementById('btn-ai-all')?.addEventListener('click', e => fetchAllAI(false, e.currentTarget));
+    document.getElementById('btn-ai-refresh')?.addEventListener('click', e => fetchAllAI(true, e.currentTarget));
   }
   tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען...</td></tr>`;
   cards.innerHTML = `<div style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</div>`;
@@ -2453,7 +2453,7 @@ function _renderResearchCards(sorted) {
   allBtn.id = 'btn-ai-all';
   allBtn.textContent = '🤖 AI לכולם';
   allBtn.title = 'סיכום AI למניות חסרות';
-  allBtn.addEventListener('click', () => fetchAllAI(false));
+  allBtn.addEventListener('click', e => fetchAllAI(false, e.currentTarget));
   cards.appendChild(allBtn);
 
   const refreshBtn = document.createElement('button');
@@ -2461,7 +2461,7 @@ function _renderResearchCards(sorted) {
   refreshBtn.id = 'btn-ai-refresh';
   refreshBtn.textContent = '🔄 עדכן הכל';
   refreshBtn.title = 'רענן סיכום AI לכולם מחדש';
-  refreshBtn.addEventListener('click', () => fetchAllAI(true));
+  refreshBtn.addEventListener('click', e => fetchAllAI(true, e.currentTarget));
   cards.appendChild(refreshBtn);
 
   if (sorted.length === 0) {
@@ -2600,8 +2600,8 @@ async function askAI(symbol, btn) {
   btn.disabled = false;
 }
 
-async function fetchAllAI(forceAll = false) {
-  const btn = document.getElementById('btn-ai-all');
+async function fetchAllAI(forceAll = false, btn = null) {
+  if (!btn) btn = document.getElementById('btn-ai-all');
   if (!btn) return;
   const allSymbols = STATE.watchlist
     .filter(i => i.category === 'מניות חול' || i.category === 'מעקב')
