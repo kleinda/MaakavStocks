@@ -754,6 +754,10 @@
     .btn-remove-row:hover { color: #e53935; }
     .btn-to-watch { background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 0.85rem; opacity: 0.4; transition: opacity 0.15s; }
     .btn-to-watch:hover { opacity: 1; }
+    .btn-hide-market { background: none; border: none; color: #ccc; font-size: 0.85rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: color var(--transition); }
+    .btn-hide-market:hover { color: #e53935; }
+    .btn-market-to-watch { background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 0.85rem; opacity: 0.4; transition: opacity 0.15s; }
+    .btn-market-to-watch:hover { opacity: 1; }
     .col-btn { text-align: center; white-space: nowrap; }
 
     .market-cat-badge {
@@ -1295,6 +1299,7 @@ const STATE = {
   lastMarketQuotes: [],
   marketPrevClose: {},  // { symbol: Dec31close } — fetched once per session for YTD calc
   sort: { col: null, dir: 'asc' },
+  hiddenMarket: new Set(JSON.parse(localStorage.getItem('hiddenMarket') || '[]')),
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -1434,8 +1439,9 @@ function getAllAssets() {
   const marketSymbols = new Set(Object.keys(MARKET_META));
   const assets = [];
 
-  // Fixed market symbols (always present)
+  // Fixed market symbols (always present unless hidden by user)
   Object.keys(MARKET_META).forEach(symbol => {
+    if (STATE.hiddenMarket.has(symbol)) return;
     const meta = MARKET_META[symbol];
     const q = STATE.lastMarketQuotes.find(r => r.symbol === symbol) || {};
     const price = q.price ?? null;
@@ -1454,6 +1460,7 @@ function getAllAssets() {
       ytd,
       group: meta.group,
       isWatchlist: false,
+      isMarket: true,
     });
   });
 
@@ -1513,7 +1520,10 @@ function renderUnifiedTable() {
       ? `<button class="btn-remove-row" data-symbol="${escHtml(asset.symbol)}" title="הסר">✕</button>` +
         (asset.category !== 'מעקב' ? `<button class="btn-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>` : '') +
         (asset.category === 'מעקב' ? `<button class="btn-to-watch btn-to-stocks" data-symbol="${escHtml(asset.symbol)}" title="העבר למניות חול">🏢</button>` : '')
-      : '';
+      : asset.isMarket
+        ? `<button class="btn-hide-market" data-symbol="${escHtml(asset.symbol)}" title="הסתר">✕</button>` +
+          `<button class="btn-market-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>`
+        : '';
 
     const catShort = CONFIG.CAT_SHORT[asset.category] || asset.category;
     const catIcon  = CONFIG.CAT_ICON[asset.category] ? CONFIG.CAT_ICON[asset.category] + ' ' : '';
@@ -1842,6 +1852,27 @@ async function handleSave() {
    REMOVE STOCK — event delegation on unified table
 ══════════════════════════════════════════════════════════════ */
 document.getElementById('market-tbody').addEventListener('click', function(e) {
+  // Hide fixed market symbol
+  const hideBtn = e.target.closest('.btn-hide-market');
+  if (hideBtn) {
+    const sym = hideBtn.dataset.symbol;
+    if (!confirm(`להסתיר את ${sym}? ניתן לשחזר דרך הגדרות.`)) return;
+    STATE.hiddenMarket.add(sym);
+    localStorage.setItem('hiddenMarket', JSON.stringify([...STATE.hiddenMarket]));
+    renderUnifiedTable();
+    return;
+  }
+  // Move fixed market symbol to מעקב
+  const marketWatchBtn = e.target.closest('.btn-market-to-watch');
+  if (marketWatchBtn) {
+    const sym = marketWatchBtn.dataset.symbol;
+    if (!confirm(`להעביר את ${sym} לרשימת מעקב?`)) return;
+    const meta = MARKET_META[sym];
+    addItemToFirestore({ id: genId(), symbol: sym, category: 'מעקב', addedAt: new Date().toISOString() });
+    STATE.hiddenMarket.add(sym);
+    localStorage.setItem('hiddenMarket', JSON.stringify([...STATE.hiddenMarket]));
+    return;
+  }
   // Move to מניות חול (from מעקב)
   const stocksBtn = e.target.closest('.btn-to-stocks');
   if (stocksBtn) {
@@ -2266,7 +2297,8 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
     return;
   }
 
-  if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch')) return;
+  if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch') ||
+      e.target.closest('.btn-hide-market') || e.target.closest('.btn-market-to-watch')) return;
   const tr = e.target.closest('tr.mrow');
   if (!tr) return;
   const symbol = tr.dataset.symbol || tr.querySelector('.col-symbol div')?.textContent?.trim();
