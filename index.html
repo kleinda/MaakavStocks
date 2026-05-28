@@ -1373,14 +1373,19 @@ function initFirestoreListener() {
       });
     }
 
-    // Fetch YTD (Dec-31 prevClose) for all watchlist symbols not yet cached — runs once in bg
+    // Fetch YTD (Dec-31 prevClose) for all watchlist symbols not yet cached — batched to avoid Yahoo throttling
     const marketSymbols = new Set(Object.keys(MARKET_META));
     const needYTD = STATE.watchlist
       .filter(i => !marketSymbols.has(i.symbol) && STATE.marketPrevClose[i.symbol] == null)
       .map(i => i.symbol);
     if (needYTD.length > 0) {
-      Promise.allSettled(needYTD.map(fetchMarketSymbolYTD))
-        .then(() => renderUnifiedTable());
+      (async () => {
+        const BATCH = 4;
+        for (let i = 0; i < needYTD.length; i += BATCH) {
+          await Promise.allSettled(needYTD.slice(i, i + BATCH).map(fetchMarketSymbolYTD));
+          renderUnifiedTable();
+        }
+      })();
     }
   }, err => showError('Firebase: ' + err.message));
 }
