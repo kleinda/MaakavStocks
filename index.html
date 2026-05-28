@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MaakavStocks | מעקב מניות</title>
-  <!-- v20260421 -->
+  <!-- v20260528 -->
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -1356,25 +1356,25 @@ async function migrateFromLocalStorage() {
 
 function initFirestoreListener() {
   watchlistCol.onSnapshot(snapshot => {
-    const prevSymbols = new Set(STATE.watchlist.map(i => i.symbol));
     STATE.watchlist = [];
     snapshot.forEach(d => STATE.watchlist.push(d.data()));
     STATE.watchlist.sort((a, b) => new Date(a.addedAt) - new Date(b.addedAt));
 
     renderUnifiedTable();
 
-    // Fetch data for symbols newly added from another device
-    const newSymbols = STATE.watchlist
-      .filter(i => !prevSymbols.has(i.symbol) && !STATE.marketData[i.symbol])
+    const marketSymbols = new Set(Object.keys(MARKET_META));
+
+    // Fetch quotes for all watchlist symbols not yet loaded (covers initial load + cross-device adds)
+    const allMissing = STATE.watchlist
+      .filter(i => !marketSymbols.has(i.symbol) && !STATE.marketData[i.symbol]?.price)
       .map(i => i.symbol);
-    if (newSymbols.length > 0) {
-      fetchAllSymbols(newSymbols).then(data => {
+    if (allMissing.length > 0) {
+      fetchAllSymbols(allMissing).then(data => {
         if (data.length > 0) { updateMarketData(data); renderUnifiedTable(); }
       });
     }
 
     // Fetch YTD (Dec-31 prevClose) for all watchlist symbols not yet cached — batched to avoid Yahoo throttling
-    const marketSymbols = new Set(Object.keys(MARKET_META));
     const needYTD = STATE.watchlist
       .filter(i => !marketSymbols.has(i.symbol) && STATE.marketPrevClose[i.symbol] == null)
       .map(i => i.symbol);
@@ -2825,6 +2825,19 @@ function renderFilterBar() {
       fetchAllSymbols(missing).then(data => {
         if (data.length > 0) { updateMarketData(data); renderUnifiedTable(); }
       });
+    }
+    // Fetch YTD for newly visible symbols not yet cached
+    const needYTD = STATE.watchlist
+      .filter(i => !marketSymbols.has(i.symbol) && STATE.activeFilters.includes(i.category) && STATE.marketPrevClose[i.symbol] == null)
+      .map(i => i.symbol);
+    if (needYTD.length > 0) {
+      (async () => {
+        const BATCH = 4;
+        for (let j = 0; j < needYTD.length; j += BATCH) {
+          await Promise.allSettled(needYTD.slice(j, j + BATCH).map(fetchMarketSymbolYTD));
+          renderUnifiedTable();
+        }
+      })();
     }
   });
 
