@@ -564,7 +564,6 @@
     /* ── שם מניה מתחת לסמל (מוסתר בדסקטופ) ─────────────────── */
     .col-name-sub { display: none; font-size: 0.68em; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; margin-top: 2px; }
     .ytd-label, .pre-label { display: none; font-size: 0.75em; color: #888; font-weight: 500; }
-    .cat-short    { display: none; }
     .col-break    { display: none; }
 
     /* ── Mobile ─────────────────────────────────────────────────  */
@@ -620,8 +619,7 @@
       }
       /* Row 1 */
       .col-symbol { order: 1; flex: 1 1 auto; }
-      .col-cat    { order: 2; }
-      .col-price  { order: 3; font-weight: 700; }
+      .col-price  { order: 2; font-weight: 700; }
       /* Flex line break */
       .col-break  { order: 4; display: block !important; flex-basis: 100%; height: 0; }
       /* Row 2 */
@@ -632,8 +630,6 @@
       /* Hidden */
       .col-time, .col-name { display: none !important; }
       .col-name-sub { display: block; }
-      .cat-full  { display: none; }
-      .cat-short { display: inline; }
       .ytd-label, .pre-label { display: inline; }
     }
 
@@ -759,16 +755,6 @@
     .btn-market-to-watch { background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 0.85rem; opacity: 0.4; transition: opacity 0.15s; }
     .btn-market-to-watch:hover { opacity: 1; }
     .col-btn { text-align: center; white-space: nowrap; }
-
-    .market-cat-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 0.73rem;
-      font-weight: 600;
-      border: 1px solid;
-      white-space: nowrap;
-    }
 
     .market-footer {
       text-align: left;
@@ -1149,7 +1135,7 @@
           <th data-col="time">Time</th>
           <th data-col="symbol">Symbol</th>
           <th data-col="name">Name</th>
-          <th data-col="category">Category</th>
+
           <th data-col="price">Value</th>
           <th class="col-break"></th>
           <th data-col="change">%day</th>
@@ -1546,7 +1532,6 @@ function renderUnifiedTable() {
 
     const change    = fmtMarketPct(asset.change);
     const pre       = fmtMarketPct(asset.preChange);
-    const catColor  = CONFIG.CAT_COLOR[asset.category] || '#999';
     const timeTxt   = asset.time ? fmtMarketTime(asset.time) : '—';
     const ytdVal    = asset.ytd;
     const ytdCls    = ytdVal == null ? 'neutral' : (ytdVal >= 0 ? 'up' : 'down');
@@ -1560,8 +1545,6 @@ function renderUnifiedTable() {
           `<button class="btn-market-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>`
         : '';
 
-    const catShort = CONFIG.CAT_SHORT[asset.category] || asset.category;
-    const catIcon  = CONFIG.CAT_ICON[asset.category] ? CONFIG.CAT_ICON[asset.category] + ' ' : '';
     const tr = document.createElement('tr');
     tr.className = `mrow mrow-${asset.group}`;
     tr.innerHTML = `
@@ -1571,7 +1554,6 @@ function renderUnifiedTable() {
         <div class="col-name-sub">${escHtml(asset.name)}</div>
       </td>
       <td class="col-name">${escHtml(asset.name)}</td>
-      <td class="col-cat"><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55"><span class="cat-full">${catIcon}${escHtml(asset.category || '')}</span><span class="cat-short">${catIcon}${escHtml(catShort)}</span></span></td>
       <td class="col-price">${fmtMarketPrice(asset.price, asset.symbol)}</td>
       <td class="col-break"></td>
       <td class="col-change ${change.cls}">${change.text}</td>
@@ -2046,7 +2028,6 @@ function renderMarketTable(quotes) {
 
     const change    = fmtMarketPct(q.change);
     const pre       = fmtMarketPct(q.preChange);
-    const catColor  = CONFIG.CAT_COLOR[meta.category] || '#999';
 
     const tr = document.createElement('tr');
     tr.className = `mrow mrow-${meta.group}`;
@@ -2055,7 +2036,6 @@ function renderMarketTable(quotes) {
     tr.innerHTML = `
       <td class="col-time">${fmtMarketTime(q.time)}</td>
       <td class="col-name">${escHtml(meta.name)}</td>
-      <td><span class="market-cat-badge" style="background:${catColor}22;color:${catColor};border-color:${catColor}55">${escHtml(meta.category || '')}</span></td>
       <td class="col-price">${fmtMarketPrice(q.price, q.symbol)}</td>
       <td class="col-change ${change.cls}">${change.text}</td>
       <td class="col-pre ${pre.cls}">${pre.text}</td>
@@ -2758,7 +2738,6 @@ function restoreStandardThead() {
       <th class="col-time" data-col="time">זמן</th>
       <th class="col-symbol" data-col="symbol">סמל</th>
       <th class="col-name" data-col="name">שם</th>
-      <th class="col-cat" data-col="category">קטגוריה</th>
       <th class="col-price" data-col="price">שער</th>
       <th class="col-break"></th>
       <th class="col-change" data-col="change">% יום</th>
