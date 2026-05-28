@@ -1372,6 +1372,16 @@ function initFirestoreListener() {
         if (data.length > 0) { updateMarketData(data); renderUnifiedTable(); }
       });
     }
+
+    // Fetch YTD (Dec-31 prevClose) for all watchlist symbols not yet cached — runs once in bg
+    const marketSymbols = new Set(Object.keys(MARKET_META));
+    const needYTD = STATE.watchlist
+      .filter(i => !marketSymbols.has(i.symbol) && STATE.marketPrevClose[i.symbol] == null)
+      .map(i => i.symbol);
+    if (needYTD.length > 0) {
+      Promise.allSettled(needYTD.map(fetchMarketSymbolYTD))
+        .then(() => renderUnifiedTable());
+    }
   }, err => showError('Firebase: ' + err.message));
 }
 
