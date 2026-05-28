@@ -803,6 +803,18 @@
       margin-right: 6px;
     }
     .jump-bar .filter-select { max-width: 140px; }
+    .sort-bar { display: flex; gap: 3px; align-items: center; }
+    .sort-btn {
+      background: none; border: 1px solid #ccc; border-radius: 6px;
+      padding: 3px 8px; font-size: 0.78rem; cursor: pointer; color: var(--text-muted);
+      transition: background 0.15s, color 0.15s;
+      font-family: var(--font);
+    }
+    .sort-btn:hover { background: #f0f0f0; color: var(--text); }
+    .sort-btn.active { background: #1976d2; color: #fff; border-color: #1976d2; }
+    body.dark .sort-btn { border-color: #444; }
+    body.dark .sort-btn:hover { background: #2a2d3e; color: var(--text); }
+    body.dark .sort-btn.active { background: #3949ab; border-color: #3949ab; }
     @media (max-width: 768px) {
       .jump-bar .filter-select { max-width: 100%; flex: 1; }
     }
@@ -1117,6 +1129,10 @@
 <!-- ── Controls Row ─────────────────────────────────────────── -->
 <div class="controls-row">
   <div class="filter-bar" id="filter-bar"></div>
+  <div class="sort-bar" id="sort-bar">
+    <button class="sort-btn" id="sort-btn-abc" title="מיון א-ב">א-ב</button>
+    <button class="sort-btn" id="sort-btn-change" title="מיון לפי שינוי יומי">% יום</button>
+  </div>
   <div class="jump-bar" id="jump-bar" style="display:none">
     <select class="filter-select" id="jump-select">
       <option value="">בחר</option>
@@ -1470,15 +1486,19 @@ function getAllAssets() {
   STATE.watchlist.forEach(item => {
     if (marketSymbols.has(item.symbol)) return;
     const d = STATE.marketData[item.symbol] || {};
+    const prevClose = STATE.marketPrevClose[item.symbol] ?? null;
+    const price     = d.price ?? null;
+    const ytd       = (prevClose != null && price != null)
+                      ? ((price - prevClose) / prevClose * 100) : null;
     watchlistAssets.push({
       symbol: item.symbol,
       name: d.name || item.symbol,
       category: item.category,
-      price: d.price ?? null,
+      price,
       change: d.change ?? null,
       preChange: d.preMarketChange ?? null,
       time: null,
-      ytd: null,
+      ytd,
       group: item.category === 'מעקב' ? 'watch' : item.category === 'מניות ישראל' ? 'il-stocks' : item.symbol.endsWith('=F') ? 'commodity' : item.symbol.endsWith('=X') ? 'forex' : 'watchlist',
       isWatchlist: true,
     });
@@ -1668,6 +1688,13 @@ async function refreshQuotes() {
   updateMarketData(data);
   renderUnifiedTable();
   updateTimestamp();
+
+  // Fetch Dec-31 YTD base for watchlist symbols not yet cached
+  const needYTD = visibleSymbols.filter(s => STATE.marketPrevClose[s] == null);
+  if (needYTD.length > 0) {
+    await Promise.allSettled(needYTD.map(fetchMarketSymbolYTD));
+    renderUnifiedTable();
+  }
 }
 
 function updateTimestamp() {
@@ -1824,6 +1851,37 @@ document.getElementById('input-symbol').addEventListener('keydown', function(e) 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
+
+document.getElementById('sort-btn-abc').addEventListener('click', function() {
+  if (STATE.sort.col === 'symbol' && STATE.sort.dir === 'asc') {
+    STATE.sort = { col: null, dir: 'asc' };
+  } else {
+    STATE.sort = { col: 'symbol', dir: 'asc' };
+  }
+  updateSortButtons();
+  renderUnifiedTable();
+});
+
+document.getElementById('sort-btn-change').addEventListener('click', function() {
+  if (STATE.sort.col === 'change') {
+    STATE.sort.dir = STATE.sort.dir === 'desc' ? 'asc' : 'desc';
+  } else {
+    STATE.sort = { col: 'change', dir: 'desc' };
+  }
+  updateSortButtons();
+  renderUnifiedTable();
+});
+
+function updateSortButtons() {
+  const abcBtn = document.getElementById('sort-btn-abc');
+  const chgBtn = document.getElementById('sort-btn-change');
+  if (!abcBtn || !chgBtn) return;
+  abcBtn.classList.toggle('active', STATE.sort.col === 'symbol');
+  chgBtn.classList.toggle('active', STATE.sort.col === 'change');
+  chgBtn.textContent = (STATE.sort.col === 'change')
+    ? (STATE.sort.dir === 'desc' ? '% יום ▼' : '% יום ▲')
+    : '% יום';
+}
 
 async function handleSave() {
   const symbol = document.getElementById('input-symbol').value.trim().toUpperCase();
