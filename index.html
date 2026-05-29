@@ -552,14 +552,15 @@
       font-weight: 600;
       padding: 7px 14px;
       border-radius: 20px;
-      border: 2px solid #1976d2;
+      border: 2px solid #ccc;
       background: #fff;
-      color: #1a237e;
+      color: #333;
       cursor: pointer;
       direction: rtl;
       min-width: 170px;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
     }
-    .filter-select:focus { outline: none; border-color: #4527a0; }
+    .filter-select:focus { outline: none; }
 
     /* ── שם מניה מתחת לסמל (מוסתר בדסקטופ) ─────────────────── */
     .col-name-sub { display: none; font-size: 0.68em; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; margin-top: 2px; }
@@ -892,7 +893,7 @@
       --down-bg: #3a1b1b;
     }
     body.dark .controls-row     { background: #13151e; border-color: #2d3748; }
-    body.dark .filter-select    { background: #1a1d27; color: #e8eaf6; border-color: #3949ab; }
+    body.dark .filter-select    { color: #e8eaf6; }
     body.dark .market-table thead tr { background: #1e2235; }
     body.dark .market-table th  { background: #1e2235; color: #7986cb; }
     body.dark .market-table td  { border-color: #2d3748; }
@@ -963,6 +964,24 @@
     /* ── Research table ───────────────────────── */
     .research-earnings-soon td { background: #fff9c4 !important; }
     body.dark .research-earnings-soon td { background: #2a2800 !important; }
+    .badge-ath {
+      display: inline-block;
+      background: linear-gradient(135deg, #ff8f00, #ffc400);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 8px;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      box-shadow: 0 1px 6px rgba(255,143,0,0.5);
+      margin-top: 2px;
+    }
+    .mrow-ath td { background: rgba(255,214,0,0.07) !important; }
+    body.dark .badge-ath { box-shadow: 0 1px 8px rgba(255,214,0,0.55); }
+    body.dark .mrow-ath td { background: rgba(255,193,7,0.11) !important; }
+
     .badge-ma-above  { background: #e8f5e9; color: #1b5e20; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
     .badge-ma-below  { background: #ffebee; color: #b71c1c; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
     .badge-upgrade   { background: #e3f2fd; color: #0d47a1; border-radius: 6px; padding: 2px 7px; font-size: 0.75rem; }
@@ -1300,6 +1319,7 @@ const STATE = {
   aiSummaries: {},        // { AAPL: { summary, updatedAt } }  ← Firebase cached
   lastMarketQuotes: [],
   marketPrevClose: {},  // { symbol: Dec31close } — fetched once per session for YTD calc
+  athCache: {},         // { symbol: number|null } — all-time high close, fetched once per session
   sort: { col: null, dir: 'asc' },
   hiddenMarket: new Set(JSON.parse(localStorage.getItem('hiddenMarket') || '[]')),
 };
@@ -1545,12 +1565,19 @@ function renderUnifiedTable() {
           `<button class="btn-market-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>`
         : '';
 
+    const athVal = STATE.athCache[asset.symbol];
+    const isATH  = athVal != null && asset.price != null && asset.price >= athVal * 0.998;
+    const athHtml = isATH ? '<span class="badge-ath">🏆 ATH</span>' : '';
+
     const tr = document.createElement('tr');
-    tr.className = `mrow mrow-${asset.group}`;
+    tr.className = `mrow mrow-${asset.group}${isATH ? ' mrow-ath' : ''}`;
+    tr.dataset.symbol = asset.symbol;
+    tr.dataset.name   = asset.name;
     tr.innerHTML = `
       <td class="col-time">${timeTxt}</td>
       <td class="col-symbol">
         <div>${escHtml(asset.symbol)}</div>
+        ${isATH ? athHtml : ''}
         <div class="col-name-sub">${escHtml(asset.name)}</div>
       </td>
       <td class="col-name">${escHtml(asset.name)}</td>
@@ -1570,6 +1597,8 @@ function renderUnifiedTable() {
 
   const el = document.getElementById('market-updated');
   if (el) el.textContent = new Date().toLocaleTimeString('he-IL');
+
+  triggerATHFetches();
 }
 
 /* Keep renderAll as alias so existing call sites work */
@@ -2059,6 +2088,42 @@ async function fetchMarketSymbolYTD(symbol) {
   } catch (e) {}
 }
 
+// Fetch all-time high (max monthly close) for one symbol. Called once per session.
+async function fetchATH(symbol) {
+  if (symbol in STATE.athCache) return;
+  STATE.athCache[symbol] = null; // prevent duplicate requests
+  try {
+    const res = await fetch(
+      `/api/chart/${encodeURIComponent(symbol)}?interval=1mo&range=max`,
+      { signal: AbortSignal.timeout(15000) }
+    );
+    if (!res.ok) { delete STATE.athCache[symbol]; return; }
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return;
+    const closes = result.indicators?.quote?.[0]?.close ?? [];
+    // Exclude the last bar (current month may be partial/in-progress)
+    const historical = closes.slice(0, -1).filter(c => c != null);
+    if (historical.length === 0) return;
+    STATE.athCache[symbol] = Math.max(...historical);
+  } catch (e) { delete STATE.athCache[symbol]; }
+}
+
+let _athFetchTimer = null;
+function triggerATHFetches() {
+  clearTimeout(_athFetchTimer);
+  _athFetchTimer = setTimeout(async () => {
+    const toFetch = [...new Set(getAllAssets().map(a => a.symbol))]
+      .filter(s => !(s in STATE.athCache));
+    if (toFetch.length === 0) return;
+    const BATCH = 2;
+    for (let i = 0; i < toFetch.length; i += BATCH) {
+      await Promise.allSettled(toFetch.slice(i, i + BATCH).map(fetchATH));
+      renderUnifiedTable();
+    }
+  }, 1500);
+}
+
 async function refreshMarket() {
   try {
     const res = await fetch('/proxy/market', { signal: AbortSignal.timeout(20000) });
@@ -2095,6 +2160,8 @@ function toggleDarkMode() {
   document.body.classList.toggle('dark');
   localStorage.setItem('darkMode', document.body.classList.contains('dark') ? '1' : '0');
   updateDarkBtn();
+  const filterSel = document.querySelector('#filter-bar .filter-select');
+  if (filterSel) applyFilterColor(filterSel);
 }
 function updateDarkBtn() {
   const btn = document.getElementById('btn-dark-mode');
@@ -2405,12 +2472,10 @@ async function loadAndRenderResearch() {
       <th class="col-research-earn">דוח קרוב</th>
       <th class="col-research-news">חדשות (48 שע')</th>
       <th class="col-research-ai" style="width:100px;text-align:center;white-space:nowrap">
-        <button class="btn-ai-all" id="btn-ai-all" title="סיכום AI למניות חסרות">🤖 הכל</button>
-        <button class="btn-ai-all" id="btn-ai-refresh" title="רענן סיכום AI לכולם" style="margin-right:3px">🔄</button>
+        <button class="btn-ai-all" id="btn-ai-all" title="סיכום AI לכל המניות">🤖 AI הכל</button>
       </th>
     </tr>`;
-    document.getElementById('btn-ai-all')?.addEventListener('click', e => fetchAllAI(false, e.currentTarget));
-    document.getElementById('btn-ai-refresh')?.addEventListener('click', e => fetchAllAI(true, e.currentTarget));
+    document.getElementById('btn-ai-all')?.addEventListener('click', e => fetchAllAI(e.currentTarget));
   }
   tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען...</td></tr>`;
   cards.innerHTML = `<div style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</div>`;
@@ -2536,18 +2601,10 @@ function _renderResearchCards(sorted) {
   const allBtn = document.createElement('button');
   allBtn.className = 'rc-ai-all';
   allBtn.id = 'btn-ai-all';
-  allBtn.textContent = '🤖 AI לכולם';
-  allBtn.title = 'סיכום AI למניות חסרות';
-  allBtn.addEventListener('click', e => fetchAllAI(false, e.currentTarget));
+  allBtn.textContent = '🤖 AI הכל';
+  allBtn.title = 'סיכום AI לכל המניות';
+  allBtn.addEventListener('click', e => fetchAllAI(e.currentTarget));
   cards.appendChild(allBtn);
-
-  const refreshBtn = document.createElement('button');
-  refreshBtn.className = 'rc-ai-all';
-  refreshBtn.id = 'btn-ai-refresh';
-  refreshBtn.textContent = '🔄 עדכן הכל';
-  refreshBtn.title = 'רענן סיכום AI לכולם מחדש';
-  refreshBtn.addEventListener('click', e => fetchAllAI(true, e.currentTarget));
-  cards.appendChild(refreshBtn);
 
   if (sorted.length === 0) {
     cards.innerHTML += `<div style="text-align:center;padding:20px;color:#aaa">אין נתוני מחקר</div>`;
@@ -2685,45 +2742,46 @@ async function askAI(symbol, btn) {
   btn.disabled = false;
 }
 
-async function fetchAllAI(forceAll = false, btn = null) {
+async function fetchAllAI(btn = null) {
   if (!btn) btn = document.getElementById('btn-ai-all');
   if (!btn) return;
-  const allSymbols = STATE.watchlist
+  const symbols = STATE.watchlist
     .filter(i => i.category === 'מניות חול' || i.category === 'מעקב')
     .map(i => i.symbol);
-  const toFetch = forceAll ? allSymbols : allSymbols.filter(s => !STATE.aiSummaries[s]);
-  if (toFetch.length === 0) {
-    btn.textContent = '✓ הכל קיים';
-    setTimeout(() => { btn.textContent = '🤖 הכל'; }, 3000);
-    return;
-  }
+  if (symbols.length === 0) return;
+
   btn.disabled = true;
-  btn.textContent = `⏳ 0/${toFetch.length}`;
+  let done = 0;
+  const total = symbols.length;
+  btn.textContent = `⏳ 0/${total}`;
+
   try {
-    const res = await fetch(`/proxy/ai-summary-bulk?symbols=${toFetch.map(encodeURIComponent).join(',')}`,
-                            { signal: AbortSignal.timeout(toFetch.length * 18000) });
-    const results = await res.json();
-    if (!Array.isArray(results)) {
-      if (results.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר בשרת');
-      throw new Error(JSON.stringify(results));
-    }
-    let done = 0;
-    for (const item of results) {
-      if (item.summary) { await saveAISummary(item.symbol, item.summary); done++; }
-      btn.textContent = `⏳ ${done}/${toFetch.length}`;
+    const BATCH = 3;
+    for (let i = 0; i < symbols.length; i += BATCH) {
+      const batch = symbols.slice(i, i + BATCH);
+      await Promise.allSettled(batch.map(async sym => {
+        try {
+          const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(sym)}`,
+            { signal: AbortSignal.timeout(30000) });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.summary) await saveAISummary(sym, data.summary);
+          }
+        } catch(e) {}
+        done++;
+        btn.textContent = `⏳ ${done}/${total}`;
+      }));
     }
     // Re-render with fresh summaries
-    const cached = allSymbols.map(s => STATE.researchData[s]).filter(Boolean);
-    renderResearchTable(cached);
+    renderResearchTable(symbols.map(s => STATE.researchData[s]).filter(Boolean));
   } catch(e) {
     btn.textContent = '⚠️';
     btn.title = e.message;
-    setTimeout(() => { btn.textContent = '🤖 הכל'; btn.disabled = false; }, 4000);
-    btn.disabled = false;
+    setTimeout(() => { btn.textContent = '🤖 AI הכל'; btn.disabled = false; }, 4000);
     return;
   }
   btn.disabled = false;
-  btn.textContent = '🤖 הכל';
+  btn.textContent = '🤖 AI הכל';
 }
 
 function restoreStandardThead() {
@@ -2746,6 +2804,17 @@ function restoreStandardThead() {
       <th class="col-btn"></th>
     </tr>`;
   initSortHeaders();
+}
+
+function applyFilterColor(sel) {
+  const val   = sel.value;
+  const color = val === '__all__'      ? '#f57c00'
+              : val === '__research__' ? '#00838f'
+              : CONFIG.CAT_COLOR[val]  || '#1976d2';
+  const dark  = document.body.classList.contains('dark');
+  sel.style.borderColor = color;
+  sel.style.background  = dark ? color + '35' : color + '20';
+  sel.style.color       = dark ? '#e8eaf6' : color;
 }
 
 function renderFilterBar() {
@@ -2784,6 +2853,7 @@ function renderFilterBar() {
   sel.appendChild(resOpt);
 
   sel.addEventListener('change', () => {
+    applyFilterColor(sel);
     if (sel.value === '__research__') {
       STATE.activeFilters = ['__research__'];
       loadAndRenderResearch();
@@ -2821,6 +2891,7 @@ function renderFilterBar() {
   });
 
   bar.appendChild(sel);
+  applyFilterColor(sel);
 }
 
 function updateJumpBar(symbols) {
