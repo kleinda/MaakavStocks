@@ -1054,6 +1054,44 @@
     .market-table.research-mode .col-research-sym { min-width: 100px; width: 130px; }
     .market-table.research-mode .col-price { width: 85px; text-align: right; }
     .market-table.research-mode .col-research-ma { width: 155px; }
+
+    /* ATH scan mode */
+    .market-table.ath-mode { width: auto !important; min-width: min(100%, 650px); }
+    .market-table.ath-mode td { white-space: nowrap; vertical-align: middle; padding: 7px 10px; }
+    .market-table.ath-mode .col-ath-sym  { min-width: 90px; width: 110px; font-weight: 700; direction: ltr; }
+    .market-table.ath-mode .col-ath-name { color: var(--text-muted); font-size: 0.85rem; max-width: 220px; }
+    .market-table.ath-mode .col-ath-num  { text-align: right; font-variant-numeric: tabular-nums; width: 80px; }
+    .col-ath-breaks { text-align: center; width: 70px; }
+    .badge-ath-breaks { display: inline-block; background: #e8f5e9; color: #2e7d32; border-radius: 10px;
+                        padding: 1px 8px; font-size: 0.75rem; font-weight: 700; }
+    body.dark .badge-ath-breaks { background: #1b3a1f; color: #81c784; }
+    .col-ath-actions { text-align: center; width: 100px; white-space: nowrap; }
+    .btn-ath-chart { background: none; border: 1px solid #1976d2; border-radius: 6px; padding: 2px 7px;
+                     font-size: 0.85rem; cursor: pointer; color: #1976d2; margin-left: 4px; }
+    .btn-ath-chart:hover { background: #e3f0fd; }
+    .btn-ath-add { background: none; border: 1px solid #2e7d32; border-radius: 6px; padding: 2px 7px;
+                   font-size: 0.75rem; cursor: pointer; color: #2e7d32; font-weight: 600; }
+    .btn-ath-add:hover { background: #e8f5e9; }
+    .ath-in-list { color: #2e7d32; font-weight: 700; font-size: 0.9rem; }
+    body.dark .btn-ath-chart { border-color: #64b5f6; color: #64b5f6; }
+    body.dark .btn-ath-chart:hover { background: rgba(100,181,246,0.1); }
+    body.dark .btn-ath-add { border-color: #81c784; color: #81c784; }
+    body.dark .btn-ath-add:hover { background: rgba(129,199,132,0.1); }
+    body.dark .ath-in-list { color: #81c784; }
+    .ath-scan-info { font-size: 0.78rem; color: var(--text-muted); padding: 4px 10px 8px; }
+    /* Mobile ATH table: restore table display + horizontal scroll */
+    @media (max-width: 600px) {
+      .ath-mode-active #market-table-wrap { overflow-x: auto; display: block !important; }
+      .market-table.ath-mode              { display: table !important; width: max-content !important; min-width: unset !important; }
+      .market-table.ath-mode tbody        { display: table-row-group !important; }
+      .market-table.ath-mode thead        { display: table-header-group !important; position: static !important; }
+      .market-table.ath-mode tr           { display: table-row !important; flex-wrap: unset !important; padding: 0 !important; background: none !important; }
+      .market-table.ath-mode td,
+      .market-table.ath-mode th           { display: table-cell !important; white-space: nowrap !important; padding: 6px 6px !important; font-size: 0.78rem; }
+      .market-table.ath-mode .col-ath-sym { font-size: 0.82rem; min-width: 55px; }
+      .market-table.ath-mode .col-ath-name{ max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+      .market-table.ath-mode .col-ath-breaks { display: none !important; }
+    }
     .market-table.research-mode .col-research-earn { width: 160px; }
     .market-table.research-mode .col-research-news { width: auto; }  /* fills rest */
     .col-research-name { font-size: 0.74rem; color: var(--text-muted); font-weight: 400; display: block; line-height: 1.3; }
@@ -1320,6 +1358,7 @@ const STATE = {
   lastMarketQuotes: [],
   marketPrevClose: {},  // { symbol: Dec31close } — fetched once per session for YTD calc
   athCache: {},         // { symbol: number|null } — all-time high close, fetched once per session
+  sp500AthData: null,  // cached ATH scan results
   sort: { col: null, dir: 'asc' },
   hiddenMarket: new Set(JSON.parse(localStorage.getItem('hiddenMarket') || '[]')),
 };
@@ -1421,7 +1460,8 @@ async function fetchAllSymbols(symbols) {
       preMarketChange: q.preChange,
       preMarketPrice:  q.prePrice,
       currency:        q.currency || '',
-      marketState:     '',
+      marketState:     q.marketState || '',
+      time:            q.time || null,
     }));
   } catch (e) {
     return [];
@@ -1498,6 +1538,7 @@ function getAllAssets() {
       group: meta.group,
       isWatchlist: false,
       isMarket: true,
+      marketState: q.marketState ?? '',
     });
   });
 
@@ -1518,10 +1559,11 @@ function getAllAssets() {
       price,
       change: d.change ?? null,
       preChange: d.preMarketChange ?? null,
-      time: null,
+      time: d.time ?? null,
       ytd,
       group: item.category === 'מעקב' ? 'watch' : item.category === 'מניות ישראל' ? 'il-stocks' : item.symbol.endsWith('=F') ? 'commodity' : item.symbol.endsWith('=X') ? 'forex' : 'watchlist',
       isWatchlist: true,
+      marketState: d.marketState || '',
     });
   });
   watchlistAssets.sort((a, b) => {
@@ -1536,7 +1578,7 @@ function getAllAssets() {
 
 
 function renderUnifiedTable() {
-  if (STATE.activeFilters[0] === '__research__') return; // research mode manages its own table
+  if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') return;
   const tbody = document.getElementById('market-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -1552,6 +1594,8 @@ function renderUnifiedTable() {
 
     const change    = fmtMarketPct(asset.change);
     const pre       = fmtMarketPct(asset.preChange);
+    const showPre   = asset.preChange != null && (asset.marketState === 'PRE' || asset.marketState === 'POST' || asset.marketState === 'CLOSED');
+    const preLabel  = asset.marketState === 'POST' ? 'POST ' : 'PRE ';
     const timeTxt   = asset.time ? fmtMarketTime(asset.time) : '—';
     const ytdVal    = asset.ytd;
     const ytdCls    = ytdVal == null ? 'neutral' : (ytdVal >= 0 ? 'up' : 'down');
@@ -1584,7 +1628,7 @@ function renderUnifiedTable() {
       <td class="col-price">${fmtMarketPrice(asset.price, asset.symbol)}</td>
       <td class="col-break"></td>
       <td class="col-change ${change.cls}">${change.text}</td>
-      <td class="col-pre ${pre.cls}"><span class="pre-label">PRE </span>${pre.text}</td>
+      <td class="col-pre ${showPre ? pre.cls : ''}">${showPre ? `<span class="pre-label">${preLabel}</span>${pre.text}` : '—'}</td>
       <td class="col-ytd ${ytdCls}"><span class="ytd-label">Y2D </span>${ytdTxt}</td>
       <td class="col-btn">${removeBtn}</td>
     `;
@@ -1657,13 +1701,14 @@ function updateMarketData(dataArr) {
   dataArr.forEach(d => {
     const prev = STATE.marketData[d.symbol];
     STATE.marketData[d.symbol] = {
-      name:           d.name,
-      price:          d.price,
-      change:         d.change,
-      preMarketPrice: d.preMarketPrice,
+      name:            d.name,
+      price:           d.price,
+      change:          d.change,
+      preMarketPrice:  d.preMarketPrice,
       preMarketChange: d.preMarketChange,
-      currency:       d.currency,
-      marketState:    d.marketState,
+      currency:        d.currency,
+      marketState:     d.marketState || '',
+      time:            d.time || null,
     };
     if (prev && prev.price != null && d.price != null && prev.price !== d.price) {
       flashCard(d.symbol, d.price > prev.price ? 'flash-up' : 'flash-down');
@@ -1688,8 +1733,8 @@ function escHtml(str) {
    REFRESH & COUNTDOWN
 ══════════════════════════════════════════════════════════════ */
 async function refreshQuotes() {
-  if (STATE.activeFilters[0] === '__research__') {
-    refreshMarket(); // רק שוק — מחקר לא מתרענן אוטומטית
+  if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') {
+    refreshMarket();
     return;
   }
   refreshMarket(); // refresh market symbols (always)
@@ -2260,29 +2305,36 @@ async function openChartModal(symbol, name, interval, range) {
   if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
 
   try {
-    // Build list of param candidates: primary + fallbacks for short intervals
+    // Build list of param candidates: primary + fallbacks
     const paramsList = [`?interval=${interval}&range=${range}`];
-    if (interval === '5m')  paramsList.push('?interval=1h&range=5d');
-    if (interval === '15m') paramsList.push('?interval=1h&range=5d');
+    if (interval === '5m')  paramsList.push('?interval=1h&range=5d', '?interval=1d&range=1mo');
+    if (interval === '15m') paramsList.push('?interval=1h&range=5d', '?interval=1d&range=1mo');
+    if (interval === '1h')  paramsList.push('?interval=1d&range=1mo');
+    // Always keep a daily fallback as last resort
+    if (!paramsList.includes('?interval=1d&range=1mo')) paramsList.push('?interval=1d&range=1mo');
 
     let data = null;
     let usedParams = paramsList[0];
+    let pairs = [];
     for (const p of paramsList) {
       try {
         const res = await fetch(`/api/chart/${encodeURIComponent(symbol)}${p}`,
           { signal: AbortSignal.timeout(10000) });
-        if (res.ok) { data = await res.json(); usedParams = p; break; }
+        if (!res.ok) continue;
+        const d = await res.json();
+        const r = d?.chart?.result?.[0];
+        if (!r) continue;
+        const ts = r.timestamp || [];
+        const cl = r.indicators?.quote?.[0]?.close || [];
+        const pts = ts.map((t, i) => ({ t, c: cl[i] })).filter(p => p.c != null);
+        if (pts.length > 0) { data = d; usedParams = p; pairs = pts; break; }
       } catch(e) {}
     }
-    // No external proxy fallback for chart — server.py is the only path (avoids CORS errors)
-
-    const result = data?.chart?.result?.[0];
-    if (!result) throw new Error('אין נתונים');
-
-    const timestamps = result.timestamp || [];
-    const closes = result.indicators?.quote?.[0]?.close || [];
-    let pairs = timestamps.map((t, i) => ({ t, c: closes[i] })).filter(p => p.c != null);
     if (pairs.length === 0) throw new Error('אין נקודות נתונים');
+
+    const result     = data.chart.result[0];
+    const timestamps = result.timestamp || [];
+    const closes     = result.indicators?.quote?.[0]?.close || [];
 
     // If 1D was requested but fallback returned multi-day data: filter to today's bars only
     const isFallback = (range === '1d' && !usedParams.includes('range=1d'));
@@ -2292,7 +2344,8 @@ async function openChartModal(symbol, name, interval, range) {
       if (todayPairs.length > 0) pairs = todayPairs;
     }
 
-    const isIntraday = (range === '1d' || range === '5d');
+    const usedInterval = (usedParams.match(/interval=([^&]+)/) || [])[1] || interval;
+    const isIntraday = usedInterval === '5m' || usedInterval === '15m' || usedInterval === '1h';
     const labels = pairs.map(p => {
       const d = new Date(p.t * 1000);
       if (isIntraday) return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -2363,6 +2416,30 @@ async function openChartModal(symbol, name, interval, range) {
       label: 'MA150',
     });
 
+    // ATH break dots — mark each day a new high was set within the chart range
+    if (range === '1y') {
+      let runningMax = -Infinity;
+      const athDotValues = values.map((v, i) => {
+        if (v == null) return null;
+        if (v > runningMax) { runningMax = v; return i === 0 ? null : v; }
+        return null;
+      });
+      if (athDotValues.some(v => v != null)) {
+        datasets.push({
+          data: athDotValues,
+          borderColor: '#e53935',
+          backgroundColor: '#e53935',
+          borderWidth: 0,
+          pointRadius: athDotValues.map(v => v != null ? 5 : 0),
+          pointHoverRadius: athDotValues.map(v => v != null ? 7 : 0),
+          pointStyle: 'circle',
+          showLine: false,
+          fill: false,
+          label: 'שיא חדש',
+        });
+      }
+    }
+
     const ctx = document.getElementById('chart-canvas').getContext('2d');
     _chartInstance = new Chart(ctx, {
       type: 'line',
@@ -2417,6 +2494,19 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
     return;
   }
 
+  // ATH scan buttons
+  const athChart = e.target.closest('.btn-ath-chart');
+  if (athChart) { e.stopPropagation(); openChartModal(athChart.dataset.symbol, athChart.dataset.name); return; }
+  const athAdd = e.target.closest('.btn-ath-add');
+  if (athAdd) {
+    e.stopPropagation();
+    const sym  = athAdd.dataset.symbol;
+    const name2 = athAdd.dataset.name;
+    addItemToFirestore({ id: genId(), symbol: sym, category: 'מניות חול', addedAt: new Date().toISOString() });
+    athAdd.replaceWith(Object.assign(document.createElement('span'), { className: 'ath-in-list', title: 'ברשימה', textContent: '✓' }));
+    return;
+  }
+
   if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch') ||
       e.target.closest('.btn-hide-market') || e.target.closest('.btn-market-to-watch')) return;
   const tr = e.target.closest('tr.mrow');
@@ -2460,7 +2550,9 @@ async function loadAndRenderResearch() {
   const thead  = document.getElementById('market-thead');
 
   // Always activate research mode — CSS handles table vs cards by screen width
+  panel?.classList.remove('ath-mode-active');
   panel?.classList.add('research-mode-active');
+  document.querySelector('.market-table')?.classList.remove('ath-mode');
   document.querySelector('.market-table')?.classList.add('research-mode');
 
   // Desktop thead + spinner
@@ -2784,9 +2876,117 @@ async function fetchAllAI(btn = null) {
   btn.textContent = '🤖 AI הכל';
 }
 
+/* ══════════════════════════════════════════════════════════════
+   ATH SCAN (S&P 500)
+══════════════════════════════════════════════════════════════ */
+async function loadAndRenderATH(force = false) {
+  const table = document.querySelector('.market-table');
+  const thead = document.getElementById('market-thead');
+  const tbody = document.getElementById('market-tbody');
+  const cards = document.getElementById('research-cards');
+  if (!tbody || !thead) return;
+
+  document.querySelector('.panel-market')?.classList.add('ath-mode-active');
+  table?.classList.add('ath-mode');
+  if (cards) cards.innerHTML = '';
+  updateJumpBar(null);
+
+  // ATH mode thead
+  thead.innerHTML = `<tr>
+    <th class="col-ath-sym" data-col="symbol">סמל</th>
+    <th class="col-ath-name" data-col="name">שם</th>
+    <th class="col-ath-num" data-col="price" style="text-align:right">שער</th>
+    <th class="col-ath-num" data-col="change" style="text-align:right">% יום</th>
+    <th class="col-ath-num" data-col="ytd"    style="text-align:right">Y2D%</th>
+    <th class="col-ath-num" data-col="ma150"  style="text-align:right">מעל MA150</th>
+    <th class="col-ath-breaks" data-col="breaks">שיאים Y2D</th>
+    <th id="ath-rescan-cell" style="text-align:center;white-space:nowrap">
+      <button id="btn-ath-rescan" style="background:#ff8f00;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:0.78rem;cursor:pointer" title="סרוק מחדש">🔄 סרוק מחדש</button>
+    </th>
+  </tr>`;
+  document.getElementById('btn-ath-rescan')?.addEventListener('click', () => loadAndRenderATH(true));
+
+  // Use cached data if available and not forced
+  if (!force && STATE.sp500AthData) {
+    renderATHTable(STATE.sp500AthData);
+    return;
+  }
+
+  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:#aaa">
+    <span class="spinner"></span> סורק S&P 500 — עשוי לקחת כדקה בפעם הראשונה...
+  </td></tr>`;
+
+  try {
+    const url = '/proxy/sp500-ath' + (force ? '?force=true' : '');
+    const res = await fetch(url, { signal: AbortSignal.timeout(120000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    STATE.sp500AthData = data;
+    renderATHTable(data);
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#e53935">שגיאה: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function renderATHTable(data) {
+  const tbody = document.getElementById('market-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#aaa">לא נמצאו מניות בשיא כרגע</td></tr>`;
+    return;
+  }
+
+  const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  const cls    = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
+
+  const watchlistSymbols = new Set(STATE.watchlist.map(i => i.symbol));
+
+  data.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.className = 'mrow mrow-watchlist';
+    tr.style.cursor = 'pointer';
+    tr.dataset.symbol = d.symbol;
+    tr.dataset.name   = d.name;
+    const ma = d.ma150Pct != null ? `+${d.ma150Pct.toFixed(1)}%` : '—';
+    const breaks = d.athBreaks > 0
+      ? `<span class="badge-ath-breaks">×${d.athBreaks}</span>`
+      : '<span style="color:#ccc">—</span>';
+    const alreadyIn = watchlistSymbols.has(d.symbol);
+    const addBtn = alreadyIn
+      ? `<span class="ath-in-list" title="ברשימה">✓</span>`
+      : `<button class="btn-ath-add" data-symbol="${escHtml(d.symbol)}" data-name="${escHtml(d.name)}" title="הוסף לרשימה">+ הוסף</button>`;
+    tr.innerHTML = `
+      <td class="col-ath-sym">
+        <strong style="direction:ltr">${escHtml(d.symbol)}</strong>
+      </td>
+      <td class="col-ath-name">${escHtml(d.name)}</td>
+      <td class="col-ath-num">$${d.price != null ? d.price.toFixed(2) : '—'}</td>
+      <td class="col-ath-num ${cls(d.change)}">${fmtPct(d.change)}</td>
+      <td class="col-ath-num ${cls(d.ytd)}">${fmtPct(d.ytd)}</td>
+      <td class="col-ath-num" style="color:#2e7d32;font-weight:600">${ma}</td>
+      <td class="col-ath-breaks">${breaks}</td>
+      <td class="col-ath-actions">
+        <button class="btn-ath-chart" data-symbol="${escHtml(d.symbol)}" data-name="${escHtml(d.name)}" title="גרף">📈</button>
+        ${addBtn}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Info line
+  const info = document.createElement('tr');
+  info.innerHTML = `<td colspan="8" class="ath-scan-info">
+    ${data.length} מניות בשיא 52 שבועות | S&P 500 | ממוין א-ב
+  </td>`;
+  tbody.insertBefore(info, tbody.firstChild);
+}
+
 function restoreStandardThead() {
-  document.querySelector('.panel-market')?.classList.remove('research-mode-active');
+  document.querySelector('.panel-market')?.classList.remove('research-mode-active', 'ath-mode-active');
   document.querySelector('.market-table')?.classList.remove('research-mode');
+  document.querySelector('.market-table')?.classList.remove('ath-mode');
   const cards = document.getElementById('research-cards');
   if (cards) cards.innerHTML = '';
   updateJumpBar(null);
@@ -2810,6 +3010,7 @@ function applyFilterColor(sel) {
   const val   = sel.value;
   const color = val === '__all__'      ? '#f57c00'
               : val === '__research__' ? '#00838f'
+              : val === '__ath__'      ? '#ff8f00'
               : CONFIG.CAT_COLOR[val]  || '#1976d2';
   const dark  = document.body.classList.contains('dark');
   sel.style.borderColor = color;
@@ -2852,6 +3053,13 @@ function renderFilterBar() {
   if (STATE.activeFilters[0] === '__research__') resOpt.selected = true;
   sel.appendChild(resOpt);
 
+  // ATH scan option
+  const athOpt = document.createElement('option');
+  athOpt.value = '__ath__';
+  athOpt.textContent = '🏆 שיא S&P';
+  if (STATE.activeFilters[0] === '__ath__') athOpt.selected = true;
+  sel.appendChild(athOpt);
+
   sel.addEventListener('change', () => {
     applyFilterColor(sel);
     if (sel.value === '__research__') {
@@ -2859,8 +3067,13 @@ function renderFilterBar() {
       loadAndRenderResearch();
       return;
     }
-    // Restore standard thead if coming from research mode
-    if (STATE.activeFilters[0] === '__research__') restoreStandardThead();
+    if (sel.value === '__ath__') {
+      STATE.activeFilters = ['__ath__'];
+      loadAndRenderATH();
+      return;
+    }
+    // Restore standard thead if coming from special mode
+    if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') restoreStandardThead();
     STATE.activeFilters = sel.value === '__all__' ? [...CONFIG.CATEGORIES] : [sel.value];
     renderUnifiedTable();
     // Fetch data for newly visible symbols that haven't been loaded yet
