@@ -716,6 +716,14 @@
     .mrow-watchlist  td { background: #fafafa; }
     .mrow-watch      td { background: #e0f7fa; }
     .mrow-il-stocks  td { background: #fff8e1; }
+    .mrow-champions  td { background: #fff8e1; border-bottom: none !important; }
+    .col-time.champions-dates { font-size: 0.72rem; line-height: 1.5; color: var(--text-muted); }
+    .champions-info-row td { padding: 0 6px 6px 6px !important; border-top: none !important; background: #fff8e1; border-bottom: 1px solid var(--border-color) !important; }
+    .champions-info-row:hover td { filter: none !important; }
+    .champions-info-cell { font-size: 0.75rem; }
+    .ch-date { margin-left: 10px; color: var(--text-muted); }
+    .ch-updated { color: #ff8f00 !important; font-weight: 600; }
+    .ch-hits { color: #ff8f00; font-weight: 700; margin-left: 10px; }
     .mrow-commodity  td { background: #f5e6d3; }
 
     .market-table tr:hover td { filter: brightness(0.96); }
@@ -902,9 +910,10 @@
     body.dark .mrow-crypto td   { background: #1a1629; }
     body.dark .mrow-forex td    { background: #0d1f10; }
     body.dark .mrow-tech td     { background: #1e1e12; }
-    body.dark .mrow-watchlist td { background: #141620; }
-    body.dark .mrow-watch td     { background: #0a1f22; }
+    body.dark .mrow-watchlist td  { background: #141620; }
+    body.dark .mrow-watch td      { background: #0a1f22; }
     body.dark .mrow-il-stocks td  { background: #1a1300; }
+    body.dark .mrow-champions td  { background: #1f1500; }
     body.dark .mrow-commodity td  { background: #1f1209; }
     body.dark .market-table-scroll { border-color: #3949ab; }
     body.dark .market-footer    { color: #555; }
@@ -1069,9 +1078,12 @@
     .btn-ath-chart { background: none; border: 1px solid #1976d2; border-radius: 6px; padding: 2px 7px;
                      font-size: 0.85rem; cursor: pointer; color: #1976d2; margin-left: 4px; }
     .btn-ath-chart:hover { background: #e3f0fd; }
-    .btn-ath-add { background: none; border: 1px solid #2e7d32; border-radius: 6px; padding: 2px 7px;
-                   font-size: 0.75rem; cursor: pointer; color: #2e7d32; font-weight: 600; }
-    .btn-ath-add:hover { background: #e8f5e9; }
+    .btn-ath-add { background: none; border: 1px solid #ff8f00; border-radius: 6px; padding: 2px 7px;
+                   font-size: 0.75rem; cursor: pointer; color: #ff8f00; font-weight: 600; }
+    .btn-ath-add:hover { background: #fff3e0; }
+    .btn-ath-update { background: none; border: 1px solid #1976d2; border-radius: 6px; padding: 2px 7px;
+                      font-size: 0.75rem; cursor: pointer; color: #1976d2; font-weight: 600; }
+    .btn-ath-update:hover { background: #e3f0fd; }
     .ath-in-list { color: #2e7d32; font-weight: 700; font-size: 0.9rem; }
     body.dark .btn-ath-chart { border-color: #64b5f6; color: #64b5f6; }
     body.dark .btn-ath-chart:hover { background: rgba(100,181,246,0.1); }
@@ -1330,7 +1342,7 @@ const watchlistCol = db.collection('watchlist');
 const CONFIG = {
   STORAGE_KEY:    'maakavStocks_watchlist',
   REFRESH_MS:     60000,
-  CATEGORIES:     ['מניות חול', 'מניות ישראל', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב'],
+  CATEGORIES:     ['מניות חול', 'מניות ישראל', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב', 'השיאנים'],
   CAT_CLASS: {
     'מניות חול':         'cat-stocks',
     'מניות ישראל':       'cat-il-stocks',
@@ -1338,6 +1350,7 @@ const CONFIG = {
     'מטבעות':            'cat-currencies',
     'אגחים':             'cat-bonds',
     'מעקב':              'cat-watch',
+    'השיאנים':           'cat-champions',
   },
   CAT_COLOR: {
     'מניות חול':         '#ef5350',
@@ -1346,6 +1359,7 @@ const CONFIG = {
     'מטבעות':            '#2e7d32',
     'אגחים':             '#7b1fa2',
     'מעקב':              '#00838f',
+    'השיאנים':           '#ff8f00',
   },
   CAT_SHORT: {
     'מניות חול':         'חול',
@@ -1354,6 +1368,7 @@ const CONFIG = {
     'מטבעות':            'מטבע',
     'אגחים':             'אגח',
     'מעקב':              'מעקב',
+    'השיאנים':           'שיאנים',
   },
   CAT_ICON: {
     'מניות חול':         '🏢',
@@ -1362,6 +1377,7 @@ const CONFIG = {
     'מטבעות':            '💱',
     'אגחים':             '📄',
     'מעקב':              '👁️',
+    'השיאנים':           '🏆',
   },
 };
 
@@ -1585,14 +1601,25 @@ function getAllAssets() {
       preChange: d.preMarketChange ?? null,
       time: d.time ?? null,
       ytd,
-      group: item.category === 'מעקב' ? 'watch' : item.category === 'מניות ישראל' ? 'il-stocks' : item.symbol.endsWith('=F') ? 'commodity' : item.symbol.endsWith('=X') ? 'forex' : 'watchlist',
+      group: item.category === 'מעקב' ? 'watch'
+           : item.category === 'השיאנים' ? 'champions'
+           : item.category === 'מניות ישראל' ? 'il-stocks'
+           : item.symbol.endsWith('=F') ? 'commodity'
+           : item.symbol.endsWith('=X') ? 'forex' : 'watchlist',
       isWatchlist: true,
       marketState: d.marketState || '',
+      addedAt:     item.addedAt   || null,
+      updatedAt:   item.updatedAt || item.addedAt || null,
+      hitCount:    item.hitCount  || null,
     });
   });
   watchlistAssets.sort((a, b) => {
     const ci = c => CONFIG.CATEGORIES.indexOf(c);
     if (ci(a.category) !== ci(b.category)) return ci(a.category) - ci(b.category);
+    // השיאנים: sort by updatedAt desc within category
+    if (a.category === 'השיאנים' && b.category === 'השיאנים') {
+      return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+    }
     return a.symbol.localeCompare(b.symbol);
   });
   assets.push(...watchlistAssets);
@@ -1620,14 +1647,16 @@ function renderUnifiedTable() {
     const pre       = fmtMarketPct(asset.preChange);
     const showPre   = asset.preChange != null && (asset.marketState === 'PRE' || asset.marketState === 'POST' || asset.marketState === 'CLOSED');
     const preLabel  = asset.marketState === 'POST' ? 'POST ' : 'PRE ';
+    const isChampion = asset.category === 'השיאנים';
     const timeTxt   = asset.time ? fmtMarketTime(asset.time) : '—';
     const ytdVal    = asset.ytd;
     const ytdCls    = ytdVal == null ? 'neutral' : (ytdVal >= 0 ? 'up' : 'down');
     const ytdTxt    = ytdVal != null ? ytdVal.toFixed(2) + '%' : '—';
     const removeBtn = asset.isWatchlist
       ? `<button class="btn-remove-row" data-symbol="${escHtml(asset.symbol)}" title="הסר">✕</button>` +
-        (asset.category !== 'מעקב' ? `<button class="btn-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>` : '') +
-        (asset.category === 'מעקב' ? `<button class="btn-to-watch btn-to-stocks" data-symbol="${escHtml(asset.symbol)}" title="העבר למניות חול">🏢</button>` : '')
+        (asset.category === 'מעקב'    ? `<button class="btn-to-watch btn-to-stocks" data-symbol="${escHtml(asset.symbol)}" title="העבר למניות חול">🏢</button>` : '') +
+        (asset.category === 'השיאנים' ? `<button class="btn-to-watch btn-to-stocks" data-symbol="${escHtml(asset.symbol)}" title="העבר למניות חול">🏢</button>` : '') +
+        (asset.category !== 'מעקב' && asset.category !== 'השיאנים' ? `<button class="btn-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>` : '')
       : asset.isMarket
         ? `<button class="btn-hide-market" data-symbol="${escHtml(asset.symbol)}" title="הסתר">✕</button>` +
           `<button class="btn-market-to-watch" data-symbol="${escHtml(asset.symbol)}" title="העבר למעקב">👁️</button>`
@@ -1657,6 +1686,22 @@ function renderUnifiedTable() {
       <td class="col-btn">${removeBtn}</td>
     `;
     tbody.appendChild(tr);
+
+    if (isChampion) {
+      const fmtD = iso => iso ? new Date(iso).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—';
+      const added   = fmtD(asset.addedAt);
+      const updated = fmtD(asset.updatedAt);
+      const sameDay = added === updated;
+      const hitsHtml = (asset.hitCount || 0) > 1 ? `<span class="ch-hits">×${asset.hitCount} ימים</span>` : '';
+      const infoRow = document.createElement('tr');
+      infoRow.className = 'champions-info-row';
+      infoRow.innerHTML = `<td colspan="9" class="champions-info-cell">
+        <span class="ch-date">נוסף: ${added}</span>
+        ${!sameDay ? `<span class="ch-date ch-updated">עודכן: ${updated}</span>` : ''}
+        ${hitsHtml}
+      </td>`;
+      tbody.appendChild(infoRow);
+    }
   });
 
   if (count === 0) {
@@ -2521,16 +2566,6 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
   // ATH scan buttons
   const athChart = e.target.closest('.btn-ath-chart');
   if (athChart) { e.stopPropagation(); openChartModal(athChart.dataset.symbol, athChart.dataset.name); return; }
-  const athAdd = e.target.closest('.btn-ath-add');
-  if (athAdd) {
-    e.stopPropagation();
-    const sym  = athAdd.dataset.symbol;
-    const name2 = athAdd.dataset.name;
-    addItemToFirestore({ id: genId(), symbol: sym, category: 'מניות חול', addedAt: new Date().toISOString() });
-    athAdd.replaceWith(Object.assign(document.createElement('span'), { className: 'ath-in-list', title: 'ברשימה', textContent: '✓' }));
-    return;
-  }
-
   if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch') ||
       e.target.closest('.btn-hide-market') || e.target.closest('.btn-market-to-watch')) return;
   const tr = e.target.closest('tr.mrow');
@@ -2947,8 +2982,38 @@ async function loadAndRenderATH(force = false) {
     const data = await res.json();
     STATE.sp500AthData = data;
     renderATHTable(data);
+    autoUpdateChampions(data);
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#e53935">שגיאה: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+async function autoUpdateChampions(data) {
+  const today = new Date().toISOString().slice(0, 10);
+  const now   = new Date().toISOString();
+  const symbolsInScan = new Set(data.map(d => d.symbol));
+
+  // Remove from השיאנים stocks no longer in scan
+  const toRemove = STATE.watchlist.filter(
+    i => i.category === 'השיאנים' && !symbolsInScan.has(i.symbol)
+  );
+  for (const item of toRemove) watchlistCol.doc(item.id).delete();
+
+  // Add / update each stock in scan
+  for (const d of data) {
+    const existing = STATE.watchlist.find(i => i.symbol === d.symbol && i.category === 'השיאנים');
+    if (!existing) {
+      await addItemToFirestore({ id: genId(), symbol: d.symbol, category: 'השיאנים',
+        addedAt: now, updatedAt: now, hitCount: 1 });
+    } else {
+      const lastDay = (existing.updatedAt || existing.addedAt || '').slice(0, 10);
+      if (lastDay !== today) {
+        watchlistCol.doc(existing.id).update({
+          updatedAt: now,
+          hitCount: (existing.hitCount || 1) + 1,
+        });
+      }
+    }
   }
 }
 
@@ -2965,8 +3030,6 @@ function renderATHTable(data) {
   const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
   const cls    = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
 
-  const watchlistSymbols = new Set(STATE.watchlist.map(i => i.symbol));
-
   data.forEach(d => {
     const tr = document.createElement('tr');
     tr.className = 'mrow mrow-watchlist';
@@ -2977,10 +3040,6 @@ function renderATHTable(data) {
     const breaks = d.athBreaks > 0
       ? `<span class="badge-ath-breaks">×${d.athBreaks}</span>`
       : '<span style="color:#ccc">—</span>';
-    const alreadyIn = watchlistSymbols.has(d.symbol);
-    const addBtn = alreadyIn
-      ? `<span class="ath-in-list" title="ברשימה">✓</span>`
-      : `<button class="btn-ath-add" data-symbol="${escHtml(d.symbol)}" data-name="${escHtml(d.name)}" title="הוסף לרשימה">+ הוסף</button>`;
     tr.innerHTML = `
       <td class="col-ath-sym">
         <strong style="direction:ltr">${escHtml(d.symbol)}</strong>
@@ -2993,7 +3052,6 @@ function renderATHTable(data) {
       <td class="col-ath-breaks">${breaks}</td>
       <td class="col-ath-actions">
         <button class="btn-ath-chart" data-symbol="${escHtml(d.symbol)}" data-name="${escHtml(d.name)}" title="גרף">📈</button>
-        ${addBtn}
       </td>
     `;
     tbody.appendChild(tr);
