@@ -1079,18 +1079,42 @@
     body.dark .btn-ath-add:hover { background: rgba(129,199,132,0.1); }
     body.dark .ath-in-list { color: #81c784; }
     .ath-scan-info { font-size: 0.78rem; color: var(--text-muted); padding: 4px 10px 8px; }
-    /* Mobile ATH table: restore table display + horizontal scroll */
+    /* Mobile ATH table: 2-row card layout per stock */
     @media (max-width: 600px) {
-      .ath-mode-active #market-table-wrap { overflow-x: auto; display: block !important; }
-      .market-table.ath-mode              { display: table !important; width: max-content !important; min-width: unset !important; }
-      .market-table.ath-mode tbody        { display: table-row-group !important; }
-      .market-table.ath-mode thead        { display: table-header-group !important; position: static !important; }
-      .market-table.ath-mode tr           { display: table-row !important; flex-wrap: unset !important; padding: 0 !important; background: none !important; }
-      .market-table.ath-mode td,
-      .market-table.ath-mode th           { display: table-cell !important; white-space: nowrap !important; padding: 6px 6px !important; font-size: 0.78rem; }
-      .market-table.ath-mode .col-ath-sym { font-size: 0.82rem; min-width: 55px; }
-      .market-table.ath-mode .col-ath-name{ max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
-      .market-table.ath-mode .col-ath-breaks { display: none !important; }
+      .ath-mode-active #market-table-wrap { overflow-x: hidden !important; }
+      .market-table.ath-mode       { display: block !important; width: 100% !important; min-width: unset !important; }
+      .market-table.ath-mode thead { display: none !important; }
+      .market-table.ath-mode tbody { display: block !important; }
+      .market-table.ath-mode tr:not(.mrow) { display: block !important; }
+      .market-table.ath-mode tr:not(.mrow) td { display: block !important; padding: 4px 10px !important; }
+      /* Each stock row = flex container wrapping into 2 lines */
+      .market-table.ath-mode tr.mrow {
+        display: flex !important; flex-wrap: wrap !important;
+        padding: 7px 8px !important; box-sizing: border-box;
+        border-bottom: 1px solid var(--border, #e0e0e0);
+        align-items: center; gap: 0;
+      }
+      .market-table.ath-mode tr.mrow > td {
+        display: block !important; box-sizing: border-box;
+        padding: 1px 3px !important; border: none !important;
+        white-space: nowrap; font-size: 0.8rem;
+      }
+      /* ── Line 1: Symbol | Name | Price | %Day ── */
+      .market-table.ath-mode tr.mrow > td:nth-child(1) { order:1; flex: 0 0 17%; font-weight:700; font-size:0.86rem; }
+      .market-table.ath-mode tr.mrow > td:nth-child(2) { order:2; flex: 1 1 41%; color:var(--text-muted); font-size:0.74rem; overflow:hidden; text-overflow:ellipsis; }
+      .market-table.ath-mode tr.mrow > td:nth-child(3) { order:3; flex: 0 0 22%; text-align:right; font-weight:600; }
+      .market-table.ath-mode tr.mrow > td:nth-child(4) { order:4; flex: 0 0 20%; text-align:right; }
+      /* ── Line 2: Y2D | MA150 | Breaks | Actions ── */
+      .market-table.ath-mode tr.mrow > td:nth-child(5) { order:5; flex: 0 0 26%; font-size:0.76rem; padding-top:3px !important; }
+      .market-table.ath-mode tr.mrow > td:nth-child(6) { order:6; flex: 0 0 30%; font-size:0.76rem; padding-top:3px !important; }
+      .market-table.ath-mode tr.mrow > td:nth-child(7) { order:7; flex: 0 0 14%; text-align:center; padding-top:3px !important; }
+      .market-table.ath-mode tr.mrow > td:nth-child(8) { order:8; flex: 1 1 auto; text-align:left; padding-top:3px !important; }
+      /* Labels before line-2 values */
+      .market-table.ath-mode tr.mrow > td:nth-child(5)::before { content:'Y2D '; font-size:0.68rem; color:var(--text-muted); }
+      .market-table.ath-mode tr.mrow > td:nth-child(6)::before { content:'MA150 '; font-size:0.68rem; color:var(--text-muted); }
+      /* Compact action buttons on mobile */
+      .market-table.ath-mode .btn-ath-chart { padding: 1px 5px; font-size:0.78rem; margin-left:2px; }
+      .market-table.ath-mode .btn-ath-add   { padding: 1px 5px; font-size:0.72rem; }
     }
     .market-table.research-mode .col-research-earn { width: 160px; }
     .market-table.research-mode .col-research-news { width: auto; }  /* fills rest */
