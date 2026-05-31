@@ -111,8 +111,9 @@ def fetch_sp500_phase1(symbol):
         name  = meta.get('shortName') or meta.get('longName') or symbol
         prev  = meta.get('chartPreviousClose') or meta.get('previousClose')
         chg   = round((price - prev) / prev * 100, 2) if (price and prev) else None
+        mst   = meta.get('marketState') or ''
         return {'symbol': symbol, 'name': name, 'price': round(price, 2),
-                'change': chg, 'week52High': round(w52h, 2)}
+                'change': chg, 'week52High': round(w52h, 2), 'marketState': mst}
     except Exception:
         return None
 
@@ -148,6 +149,15 @@ def fetch_sp500_phase2(d):
                 if c > hi:
                     breaks += 1
                 hi = max(hi, c)
+        # After market close: require today's close to be a new high vs all previous closes.
+        # During trading (REGULAR/PRE): Phase-1 price-vs-52wkHigh filter is sufficient.
+        market_state = d.get('marketState', '')
+        if market_state in ('POST', 'CLOSED', '') and len(pairs) >= 2:
+            today_close = pairs[-1][1]
+            prev_max    = max(c for _, c in pairs[:-1])
+            if today_close < prev_max * 0.998:
+                return None
+
         out = dict(d)
         out.update({'ytd': ytd_pct, 'ma150Pct': ma150, 'athBreaks': breaks})
         return out
@@ -379,7 +389,9 @@ class Handler(SimpleHTTPRequestHandler):
                         futs2 = [ex.submit(fetch_sp500_phase2, r) for r in phase1]
                         for fut in as_completed(futs2, timeout=60):
                             try:
-                                final.append(fut.result())
+                                r = fut.result()
+                                if r is not None:
+                                    final.append(r)
                             except Exception:
                                 pass
                 final.sort(key=lambda x: x['symbol'])
