@@ -1186,7 +1186,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.2</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.3</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1665,7 +1665,9 @@ function renderUnifiedTable() {
     const athVal    = STATE.athCache[asset.symbol];
     const afterClose = asset.marketState === 'CLOSED' || asset.marketState === 'POST';
     const isATH  = athVal != null && asset.price != null && (
-      afterClose ? asset.price > athVal : asset.price >= athVal * 0.998
+      afterClose
+        ? asset.price > athVal && (asset.change ?? 0) > 0
+        : asset.price >= athVal * 0.998
     );
     const athHtml = isATH ? '<span class="badge-ath">🏆 ATH</span>' : '';
 
