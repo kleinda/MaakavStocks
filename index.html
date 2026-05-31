@@ -2218,9 +2218,10 @@ async function fetchATH(symbol) {
     const data = await res.json();
     const result = data?.chart?.result?.[0];
     if (!result) return;
-    const closes = result.indicators?.quote?.[0]?.close ?? [];
-    // Exclude the last bar (today may still be in progress)
-    const historical = closes.slice(0, -1).filter(c => c != null);
+    const timestamps = result.timestamp ?? [];
+    const closes     = result.indicators?.quote?.[0]?.close ?? [];
+    const todayStart = new Date().setHours(0, 0, 0, 0) / 1000; // unix sec, start of today
+    const historical = closes.filter((c, i) => c != null && (timestamps[i] ?? 0) < todayStart);
     if (historical.length === 0) return;
     STATE.athCache[symbol] = Math.max(...historical);
   } catch (e) { delete STATE.athCache[symbol]; }
