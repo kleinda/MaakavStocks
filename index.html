@@ -1029,6 +1029,28 @@
       .research-mode-active #market-table-wrap { display: none !important; }
       .research-mode-active #research-cards    { display: flex !important; }
     }
+    /* Profit calculator */
+    #profit-calc { display: none; padding: 40px 20px; }
+    .profit-mode-active #market-table-wrap { display: none !important; }
+    .profit-mode-active #profit-calc       { display: block !important; }
+    .profit-inner { max-width: 320px; margin: 0 auto; text-align: right; }
+    .profit-row   { margin-bottom: 18px; }
+    .profit-row label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; }
+    .profit-row input {
+      width: 100%; padding: 10px 12px; font-size: 1.1rem; border-radius: 8px;
+      border: 1.5px solid #ddd; text-align: right; direction: ltr;
+      background: var(--bg-card, #fff); color: var(--text-primary, #333);
+      box-sizing: border-box;
+    }
+    .profit-row input:focus { outline: none; border-color: #1976d2; }
+    body.dark .profit-row input { border-color: #444; background: #1a2035; color: #e8eaf6; }
+    #profit-result {
+      margin-top: 28px; text-align: center;
+      font-size: 3.2rem; font-weight: 700; letter-spacing: -1px;
+    }
+    #profit-result.up   { color: #2e7d32; }
+    #profit-result.down { color: #c62828; }
+    #profit-result.flat { color: #888; }
     .rc { background: var(--bg-card, #fff); border: 1px solid #e0e0e0; border-radius: 10px;
           padding: 10px 12px; scroll-margin-top: 8px; }
     body.dark .rc { background: #1a2035; border-color: #2d3748; }
@@ -1186,7 +1208,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.5</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.6</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1243,6 +1265,19 @@
     </table>
   </div>
   <div id="research-cards"></div>
+  <div id="profit-calc">
+    <div class="profit-inner">
+      <div class="profit-row">
+        <label>מחיר קניה</label>
+        <input type="number" id="profit-buy" placeholder="0.00" min="0" step="any">
+      </div>
+      <div class="profit-row">
+        <label>מחיר נוכחי</label>
+        <input type="number" id="profit-now" placeholder="0.00" min="0" step="any">
+      </div>
+      <div id="profit-result">—</div>
+    </div>
+  </div>
   <div class="market-footer">עודכן: <span id="market-updated">—</span></div>
 </section>
 
@@ -2312,6 +2347,22 @@ function sortAssets(assets) {
   });
 }
 
+function initProfitCalc() {
+  const buyEl = document.getElementById('profit-buy');
+  const nowEl = document.getElementById('profit-now');
+  const resEl = document.getElementById('profit-result');
+  function calc() {
+    const buy = parseFloat(buyEl.value);
+    const now = parseFloat(nowEl.value);
+    if (!buy || !now || buy <= 0) { resEl.textContent = '—'; resEl.className = ''; return; }
+    const pct = (now - buy) / buy * 100;
+    resEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+    resEl.className = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+  }
+  buyEl?.addEventListener('input', calc);
+  nowEl?.addEventListener('input', calc);
+}
+
 function initSortHeaders() {
   document.querySelectorAll('.market-table th[data-col]').forEach(th => {
     th.addEventListener('click', () => {
@@ -3089,7 +3140,7 @@ function renderATHTable(data) {
 }
 
 function restoreStandardThead() {
-  document.querySelector('.panel-market')?.classList.remove('research-mode-active', 'ath-mode-active');
+  document.querySelector('.panel-market')?.classList.remove('research-mode-active', 'ath-mode-active', 'profit-mode-active');
   document.querySelector('.market-table')?.classList.remove('research-mode');
   document.querySelector('.market-table')?.classList.remove('ath-mode');
   const cards = document.getElementById('research-cards');
@@ -3116,6 +3167,7 @@ function applyFilterColor(sel) {
   const color = val === '__all__'      ? '#f57c00'
               : val === '__research__' ? '#00838f'
               : val === '__ath__'      ? '#ff8f00'
+              : val === '__profit__'   ? '#2e7d32'
               : CONFIG.CAT_COLOR[val]  || '#1976d2';
   const dark  = document.body.classList.contains('dark');
   sel.style.borderColor = color;
@@ -3165,6 +3217,13 @@ function renderFilterBar() {
   if (STATE.activeFilters[0] === '__ath__') athOpt.selected = true;
   sel.appendChild(athOpt);
 
+  // Profit calculator option
+  const profOpt = document.createElement('option');
+  profOpt.value = '__profit__';
+  profOpt.textContent = '💰 חשב רווח';
+  if (STATE.activeFilters[0] === '__profit__') profOpt.selected = true;
+  sel.appendChild(profOpt);
+
   sel.addEventListener('change', () => {
     applyFilterColor(sel);
     if (sel.value === '__research__') {
@@ -3177,8 +3236,17 @@ function renderFilterBar() {
       loadAndRenderATH();
       return;
     }
-    // Restore standard thead if coming from special mode
-    if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') restoreStandardThead();
+    if (sel.value === '__profit__') {
+      STATE.activeFilters = ['__profit__'];
+      if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') restoreStandardThead();
+      document.querySelector('.panel-market')?.classList.add('profit-mode-active');
+      return;
+    }
+    // Restore special modes
+    if (['__research__','__ath__','__profit__'].includes(STATE.activeFilters[0])) {
+      restoreStandardThead();
+      document.querySelector('.panel-market')?.classList.remove('profit-mode-active');
+    }
     STATE.activeFilters = sel.value === '__all__' ? [...CONFIG.CATEGORIES] : [sel.value];
     renderUnifiedTable();
     // Fetch data for newly visible symbols that haven't been loaded yet
@@ -3268,6 +3336,7 @@ function updateJumpBar(symbols) {
 async function init() {
   initDarkMode();
   initSortHeaders();
+  initProfitCalc();
   await migrateFromLocalStorage(); // one-time localStorage→Firestore migration
   initFirestoreListener();         // real-time sync + data fetch handled inside listener
   renderFilterBar();
