@@ -1208,7 +1208,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.6</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.7</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1377,7 +1377,7 @@ const watchlistCol = db.collection('watchlist');
 const CONFIG = {
   STORAGE_KEY:    'maakavStocks_watchlist',
   REFRESH_MS:     60000,
-  CATEGORIES:     ['מניות חול', 'מניות ישראל', 'מדדים ותעודות סל', 'מטבעות', 'אגחים', 'מעקב', 'השיאנים'],
+  CATEGORIES:     ['מדדים ותעודות סל', 'מניות חול', 'מניות ישראל', 'מטבעות', 'אגחים', 'מעקב', 'השיאנים'],
   CAT_CLASS: {
     'מניות חול':         'cat-stocks',
     'מניות ישראל':       'cat-il-stocks',
@@ -1852,7 +1852,7 @@ async function refreshQuotes() {
     .filter(i => {
       if (marketSymbols.has(i.symbol)) return false; // already in /proxy/market
       if (STATE.activeFilters.length === 0) return true;
-      return STATE.activeFilters.some(f => f === i.category || f === '__all__');
+      return STATE.activeFilters.some(f => f === i.category);
     })
     .map(i => i.symbol);
 
@@ -3164,8 +3164,7 @@ function restoreStandardThead() {
 
 function applyFilterColor(sel) {
   const val   = sel.value;
-  const color = val === '__all__'      ? '#f57c00'
-              : val === '__research__' ? '#00838f'
+  const color = val === '__research__' ? '#00838f'
               : val === '__ath__'      ? '#ff8f00'
               : val === '__profit__'   ? '#2e7d32'
               : CONFIG.CAT_COLOR[val]  || '#1976d2';
@@ -3188,18 +3187,12 @@ function renderFilterBar() {
   const sel = document.createElement('select');
   sel.className = 'filter-select';
 
-  const allActive = CONFIG.CATEGORIES.every(c => STATE.activeFilters.includes(c));
-  const optAll = document.createElement('option');
-  optAll.value = '__all__';
-  optAll.textContent = '📋 הכל';
-  if (allActive) optAll.selected = true;
-  sel.appendChild(optAll);
-
-  CONFIG.CATEGORIES.forEach(cat => {
+  // Regular categories (all except השיאנים — placed after research)
+  CONFIG.CATEGORIES.filter(c => c !== 'השיאנים').forEach(cat => {
     const opt = document.createElement('option');
     opt.value = cat;
-    opt.textContent = '\u200F' + CONFIG.CAT_ICON[cat] + ' ' + cat;
-    if (!allActive && STATE.activeFilters.includes(cat)) opt.selected = true;
+    opt.textContent = '‏' + CONFIG.CAT_ICON[cat] + ' ' + cat;
+    if (STATE.activeFilters.includes(cat)) opt.selected = true;
     sel.appendChild(opt);
   });
 
@@ -3209,6 +3202,13 @@ function renderFilterBar() {
   resOpt.textContent = '🔬 מחקר';
   if (STATE.activeFilters[0] === '__research__') resOpt.selected = true;
   sel.appendChild(resOpt);
+
+  // השיאנים — after research
+  const champOpt = document.createElement('option');
+  champOpt.value = 'השיאנים';
+  champOpt.textContent = '‏' + CONFIG.CAT_ICON['השיאנים'] + ' השיאנים';
+  if (STATE.activeFilters.includes('השיאנים')) champOpt.selected = true;
+  sel.appendChild(champOpt);
 
   // ATH scan option
   const athOpt = document.createElement('option');
@@ -3224,7 +3224,7 @@ function renderFilterBar() {
   if (STATE.activeFilters[0] === '__profit__') profOpt.selected = true;
   sel.appendChild(profOpt);
 
-  sel.addEventListener('change', () => {
+    sel.addEventListener('change', () => {
     applyFilterColor(sel);
     if (sel.value === '__research__') {
       STATE.activeFilters = ['__research__'];
@@ -3247,7 +3247,7 @@ function renderFilterBar() {
       restoreStandardThead();
       document.querySelector('.panel-market')?.classList.remove('profit-mode-active');
     }
-    STATE.activeFilters = sel.value === '__all__' ? [...CONFIG.CATEGORIES] : [sel.value];
+    STATE.activeFilters = [sel.value];
     renderUnifiedTable();
     // Fetch data for newly visible symbols that haven't been loaded yet
     const marketSymbols = new Set(Object.keys(MARKET_META));
