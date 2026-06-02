@@ -36,7 +36,7 @@ HEADERS = {
 MARKET_SYMBOLS = ["QQQ", "SPY", "DIA", "IWM", "BTC-USD", "ETH-USD", "TA35.TA", "TA90.TA", "EURILS=X"]
 
 # S&P 500 constituents (Yahoo Finance symbols) — used for ATH scan
-SP500_SYMBOLS = [
+_SP500_FALLBACK = [
     "A","AAPL","ABBV","ACGL","ACN","ADBE","ADI","ADP","ADSK","AEE","AEP","AES","AFL","AIG","AIZ","AJG",
     "AKAM","ALB","ALGN","ALL","ALLE","AMAT","AMCR","AMD","AME","AMGN","AMP","AMT","AMZN","ANET","ANSS",
     "AON","AOS","APA","APD","APH","APTV","ARE","ATO","AVB","AVGO","AVY","AWK","AXON","AXP","AZO",
@@ -88,6 +88,44 @@ SP500_SYMBOLS = [
 _sp500_ath_cache      = None
 _sp500_ath_cache_time = 0.0
 SP500_ATH_CACHE_TTL   = 7200   # 2 hours
+
+_SP500_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sp500_symbols_cache.json')
+_SP500_CACHE_DAYS = 90  # refresh every 3 months
+
+def _load_sp500_symbols():
+    """Return S&P 500 symbols: from 3-month cache if fresh, else fetch Wikipedia, else fallback."""
+    # Try cache
+    if os.path.exists(_SP500_CACHE_FILE):
+        try:
+            with open(_SP500_CACHE_FILE, encoding='utf-8') as f:
+                cached = json.load(f)
+            saved = datetime.datetime.fromisoformat(cached['date'])
+            if (datetime.datetime.now() - saved).days < _SP500_CACHE_DAYS:
+                return cached['symbols']
+        except Exception:
+            pass
+    # Fetch from Wikipedia
+    try:
+        url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            html = r.read().decode('utf-8')
+        import re
+        # First table: wikitable, tickers in first <td> of each row
+        tickers = re.findall(r'<td><a[^>]*>([A-Z]{1,5}(?:\.[A-Z])?)</a></td>', html)
+        tickers = [t.replace('.', '-') for t in tickers if t]  # BRK.B → BRK-B
+        if len(tickers) > 400:
+            with open(_SP500_CACHE_FILE, 'w', encoding='utf-8') as f:
+                json.dump({'date': datetime.datetime.now().isoformat(), 'symbols': tickers}, f)
+            print(f'[sp500] fetched {len(tickers)} symbols from Wikipedia, cached.')
+            return tickers
+    except Exception as e:
+        print(f'[sp500] Wikipedia fetch failed: {e}')
+    # Fallback to hardcoded list
+    print('[sp500] using hardcoded fallback list')
+    return _SP500_FALLBACK
+
+SP500_SYMBOLS = _load_sp500_symbols()
 
 
 def fetch_sp500_phase1(symbol):
