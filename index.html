@@ -1029,6 +1029,12 @@
       .research-mode-active #market-table-wrap { display: none !important; }
       .research-mode-active #research-cards    { display: flex !important; }
     }
+    /* Forex chart */
+    #forex-chart-wrap { display: none; padding: 10px 14px 4px; }
+    .forex-mode-active #forex-chart-wrap { display: block !important; }
+    .forex-chart-title { font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-bottom: 6px; }
+    .forex-chart-box { height: 180px; }
+    @media (max-width: 600px) { .forex-chart-box { height: 130px; } }
     /* Profit calculator */
     #profit-calc { display: none; padding: 40px 20px; }
     .profit-mode-active #market-table-wrap { display: none !important; }
@@ -1208,7 +1214,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.7</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.8</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1265,6 +1271,10 @@
     </table>
   </div>
   <div id="research-cards"></div>
+  <div id="forex-chart-wrap">
+    <div class="forex-chart-title">דולר / שקל — שנה אחרונה</div>
+    <div class="forex-chart-box"><canvas id="forex-chart-canvas"></canvas></div>
+  </div>
   <div id="profit-calc">
     <div class="profit-inner">
       <div class="profit-row">
@@ -2347,6 +2357,40 @@ function sortAssets(assets) {
   });
 }
 
+let _forexChart = null;
+async function renderForexChart() {
+  const canvas = document.getElementById('forex-chart-canvas');
+  if (!canvas) return;
+  try {
+    const res = await fetch('/api/chart/USDILS%3DX?interval=1d&range=1y', { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) return;
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return;
+    const ts     = result.timestamp || [];
+    const closes = result.indicators?.quote?.[0]?.close || [];
+    const labels = ts.map(t => new Date(t * 1000).toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit' }));
+    const values = closes.map(c => c != null ? +c.toFixed(3) : null);
+    if (_forexChart) { _forexChart.destroy(); _forexChart = null; }
+    const isDark = document.body.classList.contains('dark');
+    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    const tickColor = isDark ? '#aaa' : '#666';
+    _forexChart = new Chart(canvas, {
+      type: 'line',
+      data: { labels, datasets: [{ data: values, borderColor: '#2e7d32', borderWidth: 1.5,
+        pointRadius: 0, tension: 0.1, fill: true, backgroundColor: 'rgba(46,125,50,0.07)' }] },
+      options: { responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false,
+          callbacks: { label: ctx => '₪ ' + ctx.parsed.y.toFixed(3) } } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 7, font: { size: 10 }, color: tickColor }, grid: { color: gridColor } },
+          y: { position: 'right', ticks: { font: { size: 10 }, color: tickColor }, grid: { color: gridColor } }
+        }
+      }
+    });
+  } catch(e) {}
+}
+
 function initProfitCalc() {
   const buyEl = document.getElementById('profit-buy');
   const nowEl = document.getElementById('profit-now');
@@ -3248,6 +3292,15 @@ function renderFilterBar() {
       document.querySelector('.panel-market')?.classList.remove('profit-mode-active');
     }
     STATE.activeFilters = [sel.value];
+    // Show/hide forex chart
+    const panel = document.querySelector('.panel-market');
+    if (sel.value === 'מטבעות') {
+      panel?.classList.add('forex-mode-active');
+      renderForexChart();
+    } else {
+      panel?.classList.remove('forex-mode-active');
+      if (_forexChart) { _forexChart.destroy(); _forexChart = null; }
+    }
     renderUnifiedTable();
     // Fetch data for newly visible symbols that haven't been loaded yet
     const marketSymbols = new Set(Object.keys(MARKET_META));
