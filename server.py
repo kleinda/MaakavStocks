@@ -54,7 +54,7 @@ SP500_SYMBOLS = [
     "FRT","FSLR","FTV",
     "GD","GE","GEHC","GEN","GILD","GIS","GL","GLW","GM","GNRC","GOOG","GOOGL","GPC","GPN","GRMN",
     "GS","GWW",
-    "HAL","HAS","HBAN","HD","HES","HIG","HII","HLT","HOLX","HON","HPE","HPQ","HRL","HSIC","HST",
+    "HAL","HAS","HBAN","HD","HES","HIG","HII","HLT","HON","HPE","HPQ","HRL","HSIC","HST",
     "HSY","HUBB","HUM","HWM",
     "IBM","ICE","IDXX","IEX","IFF","ILMN","INCY","INTC","INTU","INVH","IP","IPG","IQV","IR","IRM",
     "ISRG","IT","ITW","IVZ",
