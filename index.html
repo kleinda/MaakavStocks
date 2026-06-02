@@ -1186,7 +1186,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.4</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.5</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -2969,10 +2969,22 @@ async function loadAndRenderATH(force = false) {
   </tr>`;
   document.getElementById('btn-ath-rescan')?.addEventListener('click', () => loadAndRenderATH(true));
 
-  // Use cached data if available and not forced
+  // Detect current market state from fresh quotes
+  const _refQ = STATE.lastMarketQuotes.find(q => q.symbol === 'SPY' || q.symbol === 'QQQ') || {};
+  const _curMs = _refQ.marketState || '';
+  const _nowAfterClose = _curMs === 'CLOSED' || _curMs === 'POST';
+  const _cachedMs = STATE.sp500AthData?.[0]?.marketState || '';
+  const _cachedAfterClose = _cachedMs === 'CLOSED' || _cachedMs === 'POST';
+
+  // Use cached data unless: forced, or market just closed but cache is from REGULAR hours
   if (!force && STATE.sp500AthData) {
-    renderATHTable(STATE.sp500AthData);
-    return;
+    if (_nowAfterClose && !_cachedAfterClose) {
+      // Market is now closed but cached scan was from trading hours — fetch fresh
+    } else {
+      renderATHTable(STATE.sp500AthData);
+      autoUpdateChampions(STATE.sp500AthData);
+      return;
+    }
   }
 
   tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:#aaa">
@@ -2994,8 +3006,11 @@ async function loadAndRenderATH(force = false) {
 
 async function autoUpdateChampions(data) {
   // Only update after market close — intraday ATH touches are not confirmed highs
-  const ms = data[0]?.marketState || '';
-  if (ms !== 'CLOSED' && ms !== 'POST') return;
+  // Use fresh market quotes for current state, AND verify scan data is also from after-close
+  const _ref = STATE.lastMarketQuotes.find(q => q.symbol === 'SPY' || q.symbol === 'QQQ') || {};
+  const curMs  = _ref.marketState || '';
+  const scanMs = data[0]?.marketState || '';
+  if ((curMs !== 'CLOSED' && curMs !== 'POST') || (scanMs !== 'CLOSED' && scanMs !== 'POST')) return;
 
   const today = new Date().toISOString().slice(0, 10);
   const now   = new Date().toISOString();
