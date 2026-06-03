@@ -1214,7 +1214,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.8</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.9</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -3087,7 +3087,8 @@ async function loadAndRenderATH(force = false) {
   </td></tr>`;
 
   try {
-    const url = '/proxy/sp500-ath' + (force ? '?force=true' : '');
+    const needForce = force || (_nowAfterClose && !_cachedAfterClose);
+    const url = '/proxy/sp500-ath' + (needForce ? '?force=true' : '');
     const res = await fetch(url, { signal: AbortSignal.timeout(120000) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
