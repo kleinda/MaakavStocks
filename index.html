@@ -1214,7 +1214,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v100.9</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v101.3</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -3101,39 +3101,39 @@ async function loadAndRenderATH(force = false) {
 }
 
 async function autoUpdateChampions(data) {
-  // Only update after market close — intraday ATH touches are not confirmed highs
-  // Use fresh market quotes for current state, AND verify scan data is also from after-close
   const _ref = STATE.lastMarketQuotes.find(q => q.symbol === 'SPY' || q.symbol === 'QQQ') || {};
   const curMs  = _ref.marketState || '';
   const scanMs = data[0]?.marketState || '';
-  if ((curMs !== 'CLOSED' && curMs !== 'POST') || (scanMs !== 'CLOSED' && scanMs !== 'POST')) return;
+  console.log('[champions] curMs=', curMs, 'scanMs=', scanMs, 'data.length=', data.length);
+  const afterClose = s => s === 'CLOSED' || s === 'POST' || s === '';
+  if (!afterClose(scanMs)) { console.log('[champions] ABORT: scanMs not after-close:', scanMs); return; }
+  if (curMs && !afterClose(curMs)) { console.log('[champions] ABORT: curMs not after-close:', curMs); return; }
 
   const today = new Date().toISOString().slice(0, 10);
   const now   = new Date().toISOString();
   const symbolsInScan = new Set(data.map(d => d.symbol));
+  console.log('[champions] proceeding — symbols:', [...symbolsInScan]);
 
-  // Remove from השיאנים stocks no longer in scan
-  const toRemove = STATE.watchlist.filter(
-    i => i.category === 'השיאנים' && !symbolsInScan.has(i.symbol)
-  );
-  for (const item of toRemove) watchlistCol.doc(item.id).delete();
-
-  // Add / update each stock in scan
   for (const d of data) {
     const existing = STATE.watchlist.find(i => i.symbol === d.symbol && i.category === 'השיאנים');
     if (!existing) {
+      console.log('[champions] adding:', d.symbol);
       await addItemToFirestore({ id: genId(), symbol: d.symbol, category: 'השיאנים',
         addedAt: now, updatedAt: now, hitCount: 1 });
     } else {
       const lastDay = (existing.updatedAt || existing.addedAt || '').slice(0, 10);
       if (lastDay !== today) {
+        console.log('[champions] updating hitCount:', d.symbol);
         watchlistCol.doc(existing.id).update({
           updatedAt: now,
           hitCount: (existing.hitCount || 1) + 1,
         });
+      } else {
+        console.log('[champions] skip (already updated today):', d.symbol);
       }
     }
   }
+  console.log('[champions] done');
 }
 
 function renderATHTable(data) {
