@@ -144,7 +144,7 @@ def fetch_sp500_phase1(symbol):
         if not w52h:
             closes = [c for c in res['indicators']['quote'][0].get('close', []) if c]
             w52h = max(closes) if closes else None
-        if not w52h or price < w52h * 0.995:
+        if not w52h or price < w52h * 0.98:
             return None
         name  = meta.get('shortName') or meta.get('longName') or symbol
         prev  = meta.get('chartPreviousClose') or meta.get('previousClose')

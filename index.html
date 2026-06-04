@@ -1030,11 +1030,11 @@
       .research-mode-active #research-cards    { display: flex !important; }
     }
     /* Forex chart */
-    #forex-chart-wrap { display: none; padding: 10px 14px 4px; }
-    .forex-mode-active #forex-chart-wrap { display: block !important; }
-    .forex-chart-title { font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-bottom: 6px; }
-    .forex-chart-box { height: 180px; }
-    @media (max-width: 600px) { .forex-chart-box { height: 130px; } }
+    #forex-chart-wrap { display: none; background: linear-gradient(180deg,rgba(255,143,0,0.06) 0%,transparent 100%); border-top: 1px solid rgba(255,143,0,0.2); }
+    .forex-mode-active #forex-chart-wrap { display: flex !important; flex-direction: column; flex: 1; min-height: 0; margin: 6px auto 0; width: 50%; }
+    .forex-mode-active .market-table-scroll { flex: 0 0 auto !important; overflow-y: auto; }
+    .forex-chart-title { font-size: 0.72rem; color: #e65100; text-align: center; padding: 5px 0 2px; font-weight: 600; letter-spacing: 0.03em; }
+    .forex-chart-box { flex: 1; min-height: 80px; }
     /* Profit calculator */
     #profit-calc { display: none; padding: 40px 20px; }
     .profit-mode-active #market-table-wrap { display: none !important; }
@@ -1214,7 +1214,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v101.3</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v101.9</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -2373,18 +2373,23 @@ async function renderForexChart() {
     const values = closes.map(c => c != null ? +c.toFixed(3) : null);
     if (_forexChart) { _forexChart.destroy(); _forexChart = null; }
     const isDark = document.body.classList.contains('dark');
-    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-    const tickColor = isDark ? '#aaa' : '#666';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,143,0,0.1)';
+    const tickColor = isDark ? '#ffcc80' : '#bf360c';
+    const ctx2d = canvas.getContext('2d');
+    const grad = ctx2d.createLinearGradient(0, 0, 0, canvas.offsetHeight || 70);
+    grad.addColorStop(0, 'rgba(255,143,0,0.35)');
+    grad.addColorStop(1, 'rgba(255,143,0,0.02)');
     _forexChart = new Chart(canvas, {
       type: 'line',
-      data: { labels, datasets: [{ data: values, borderColor: '#2e7d32', borderWidth: 1.5,
-        pointRadius: 0, tension: 0.1, fill: true, backgroundColor: 'rgba(46,125,50,0.07)' }] },
+      data: { labels, datasets: [{ data: values, borderColor: '#ff8f00', borderWidth: 2,
+        pointRadius: 0, tension: 0.2, fill: true, backgroundColor: grad, spanGaps: true }] },
       options: { responsive: true, maintainAspectRatio: false, animation: false,
         plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false,
+          backgroundColor: 'rgba(230,81,0,0.92)', titleColor: '#fff', bodyColor: '#ffe0b2',
           callbacks: { label: ctx => '₪ ' + ctx.parsed.y.toFixed(3) } } },
         scales: {
-          x: { ticks: { maxTicksLimit: 7, font: { size: 10 }, color: tickColor }, grid: { color: gridColor } },
-          y: { position: 'right', ticks: { font: { size: 10 }, color: tickColor }, grid: { color: gridColor } }
+          x: { ticks: { maxTicksLimit: 8, font: { size: 9 }, color: tickColor }, grid: { color: gridColor } },
+          y: { position: 'right', ticks: { font: { size: 9 }, color: tickColor }, grid: { color: gridColor } }
         }
       }
     });
@@ -3105,7 +3110,7 @@ async function autoUpdateChampions(data) {
   const curMs  = _ref.marketState || '';
   const scanMs = data[0]?.marketState || '';
   console.log('[champions] curMs=', curMs, 'scanMs=', scanMs, 'data.length=', data.length);
-  const afterClose = s => s === 'CLOSED' || s === 'POST' || s === '';
+  const afterClose = s => s === 'CLOSED' || s === 'POST' || s === 'PRE' || s === '';
   if (!afterClose(scanMs)) { console.log('[champions] ABORT: scanMs not after-close:', scanMs); return; }
   if (curMs && !afterClose(curMs)) { console.log('[champions] ABORT: curMs not after-close:', curMs); return; }
 
