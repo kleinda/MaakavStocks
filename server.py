@@ -144,7 +144,7 @@ def fetch_sp500_phase1(symbol):
         if not w52h:
             closes = [c for c in res['indicators']['quote'][0].get('close', []) if c]
             w52h = max(closes) if closes else None
-        if not w52h or price < w52h * 0.98:
+        if not w52h or price < w52h * 0.95:
             return None
         name  = meta.get('shortName') or meta.get('longName') or symbol
         prev  = meta.get('chartPreviousClose') or meta.get('previousClose')
@@ -187,13 +187,12 @@ def fetch_sp500_phase2(d):
                 if c > hi:
                     breaks += 1
                 hi = max(hi, c)
-        # After market close: require today's close to be a new high vs all previous closes.
-        # During trading (REGULAR/PRE): Phase-1 price-vs-52wkHigh filter is sufficient.
-        market_state = d.get('marketState', '')
-        if market_state in ('POST', 'CLOSED', '') and len(pairs) >= 2:
-            today_close = pairs[-1][1]
-            prev_max    = max(c for _, c in pairs[:-1])
-            if today_close < prev_max * 0.998:
+        # Always require current price to be at or above all previous session closes.
+        # Uses same close-based reference as the ATH badge (consistent definition).
+        if len(pairs) >= 2:
+            current_price = res['meta'].get('regularMarketPrice') or d['price']
+            prev_max = max(c for _, c in pairs[:-1])
+            if current_price < prev_max * 0.998:
                 return None
 
         out = dict(d)
