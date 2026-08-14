@@ -249,7 +249,14 @@ def fetch_quote(symbol):
     except Exception:
         pass  # pre-market optional
 
-    prev = prev_close or prev_from_bars
+    # Forex (=X): chartPreviousClose is reliable for daily %.
+    # Stocks/indices: prev_from_bars (5d daily second-to-last close) is most reliable —
+    # chartPreviousClose and regularMarketChangePercent can be wrong for non-US indices (e.g. TA35).
+    is_forex = symbol.endswith('=X')
+    if is_forex:
+        prev = prev_close or prev_from_bars
+    else:
+        prev = prev_from_bars or prev_close
     change_pct = ((price - prev) / prev * 100) if (price and prev) else None
 
     return {

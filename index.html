@@ -991,6 +991,49 @@
     body.dark .badge-ath { box-shadow: 0 1px 8px rgba(255,214,0,0.55); }
     body.dark .mrow-ath td { background: rgba(255,193,7,0.11) !important; }
 
+    /* ── Indices compact mode (מדדים ותעודות סל) ─────────────────── */
+    .market-table.indices-mode th[data-col="time"],
+    .market-table.indices-mode .col-time,
+    .market-table.indices-mode th[data-col="name"],
+    .market-table.indices-mode .col-name,
+    .market-table.indices-mode th[data-col="ytd"],
+    .market-table.indices-mode .col-ytd { display: none !important; }
+
+    .market-table.indices-mode td,
+    .market-table.indices-mode th { padding: 8px 11px; }
+
+    .market-table.indices-mode .col-symbol > div:first-child { display: none; }
+    .market-table.indices-mode .col-name-sub {
+      font-weight: 700; font-size: 0.95rem;
+      color: inherit; margin-top: 0;
+    }
+
+    .market-table.indices-mode .mrow-us td     { background: #1a237e !important; color: #fff; }
+    .market-table.indices-mode .mrow-il td     { background: #1b5e20 !important; color: #fff; }
+    .market-table.indices-mode .mrow-crypto td { background: #4a148c !important; color: #fff; }
+    .market-table.indices-mode .mrow-forex td  { background: #006064 !important; color: #fff; }
+    .market-table.indices-mode .mrow-watchlist td { background: #37474f !important; color: #fff; }
+    .market-table.indices-mode .mrow-watch td  { background: #00695c !important; color: #fff; }
+    .market-table.indices-mode .mrow-il-stocks td { background: #4e342e !important; color: #fff; }
+    .market-table.indices-mode .mrow-commodity td { background: #5d4037 !important; color: #fff; }
+
+    .market-table.indices-mode .clr-up  { color: #69f0ae !important; }
+    .market-table.indices-mode .clr-dn  { color: #ff5252 !important; }
+    .market-table.indices-mode .clr-neu { color: #bdbdbd !important; }
+    .market-table.indices-mode .pre-label { color: rgba(255,255,255,0.6); font-size: 0.7rem; }
+
+    .market-table.indices-mode tr:hover td { filter: brightness(1.18) !important; }
+
+    .market-table.indices-mode .col-btn { width: 30px; padding: 2px 3px; text-align: center; }
+    .market-table.indices-mode .col-btn button {
+      display: block; width: 22px; height: 20px;
+      font-size: 10px; padding: 0; margin: 2px auto;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 4px; color: #fff; cursor: pointer; line-height: 1;
+    }
+    .market-table.indices-mode .col-btn button:hover { background: rgba(255,255,255,0.35); }
+
     .badge-ma-above  { background: #e8f5e9; color: #1b5e20; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
     .badge-ma-below  { background: #ffebee; color: #b71c1c; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
     .badge-upgrade   { background: #e3f2fd; color: #0d47a1; border-radius: 6px; padding: 2px 7px; font-size: 0.75rem; }
@@ -1214,7 +1257,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v102.5</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.0</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1674,10 +1717,24 @@ function getAllAssets() {
 
 
 function renderUnifiedTable() {
-  if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') return;
+  if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') {
+    document.querySelector('.market-table')?.classList.remove('indices-mode');
+    return;
+  }
   const tbody = document.getElementById('market-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
+
+  const isIndicesMode = STATE.activeFilters.length === 1 &&
+    STATE.activeFilters[0] === 'מדדים ותעודות סל';
+  document.querySelector('.market-table')?.classList.toggle('indices-mode', isIndicesMode);
+  const thead = document.getElementById('market-thead');
+  if (thead) {
+    const symTh = thead.querySelector('[data-col="symbol"]');
+    const chgTh = thead.querySelector('[data-col="change"]');
+    if (symTh) symTh.textContent = isIndicesMode ? 'נכס' : 'סמל';
+    if (chgTh) chgTh.textContent = isIndicesMode ? '% שינוי' : '% יום';
+  }
 
   const assets      = sortAssets(getAllAssets());
   const activeFilters = STATE.activeFilters;
@@ -2541,13 +2598,17 @@ async function openChartModal(symbol, name, interval, range) {
     const minVal    = Math.min(...values);
     const maxVal    = Math.max(...values);
     const last      = values[values.length - 1];
-    // For 1D: find yesterday's last bar as base (accurate even with fallback data)
+    // For 1D: derive previous close from server-computed change% (avoids unreliable chartPreviousClose)
     let first;
     if (range === '1d') {
-      const todayStartTs = new Date(new Date().toISOString().slice(0, 10)).getTime() / 1000;
-      const allPairs = timestamps.map((t, i) => ({ t, c: closes[i] })).filter(p => p.c != null);
-      const prevBar  = allPairs.slice().reverse().find(p => p.t < todayStartTs);
-      first = prevBar?.c ?? result.meta?.chartPreviousClose ?? values[0];
+      if (_change != null && _price != null) {
+        first = _price / (1 + _change / 100);
+      } else {
+        const todayStartTs = new Date(new Date().toISOString().slice(0, 10)).getTime() / 1000;
+        const allPairs = timestamps.map((t, i) => ({ t, c: closes[i] })).filter(p => p.c != null);
+        const prevBar  = allPairs.slice().reverse().find(p => p.t < todayStartTs);
+        first = prevBar?.c ?? result.meta?.chartPreviousClose ?? values[0];
+      }
     } else {
       first = values[0];
     }
