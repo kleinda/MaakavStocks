@@ -1018,7 +1018,7 @@
     .market-table.indices-mode .col-btn    { width: 36px; }
 
     /* Background on TR covers the flex-gap between mobile rows */
-    .market-table.indices-mode .mrow-us     { background: #1a237e !important; }
+    .market-table.indices-mode .mrow-us     { background: #1e3a6e !important; }
     .market-table.indices-mode .mrow-il     { background: #1b5e20 !important; }
     .market-table.indices-mode .mrow-crypto { background: #4a148c !important; }
     .market-table.indices-mode .mrow-forex  { background: #006064 !important; }
@@ -1027,17 +1027,16 @@
     .market-table.indices-mode .mrow-il-stocks { background: #4e342e !important; }
     .market-table.indices-mode .mrow-commodity { background: #5d4037 !important; }
 
-    /* TDs transparent so TR color shows through */
-    .market-table.indices-mode tr.mrow td { background: transparent !important; color: #fff; }
+    /* TDs transparent so TR color shows through; no forced white on text */
+    .market-table.indices-mode tr.mrow td { background: transparent !important; color: #e8eaf6; }
 
-    /* Change column: bright green / red regardless of row color */
-    .market-table.indices-mode .col-change.clr-up  { color: #00e676 !important; }
-    .market-table.indices-mode .col-change.clr-dn  { color: #ff5252 !important; }
-    .market-table.indices-mode .col-change.clr-neu { color: #bdbdbd !important; }
-    /* Non-change cells: subtle muted colors */
-    .market-table.indices-mode .clr-up  { color: #a5d6a7 !important; }
-    .market-table.indices-mode .clr-dn  { color: #ef9a9a !important; }
-    .market-table.indices-mode .clr-neu { color: #bdbdbd !important; }
+    /* Change column: vivid green / red (classes are 'up'/'down'/'neutral') */
+    .market-table.indices-mode .col-change.up      { color: #00e676 !important; font-weight: 700; }
+    .market-table.indices-mode .col-change.down    { color: #ff5252 !important; font-weight: 700; }
+    .market-table.indices-mode .col-change.neutral { color: #bdbdbd !important; }
+    /* PRE column: softer green/red */
+    .market-table.indices-mode .col-pre.up   { color: #80cbc4 !important; }
+    .market-table.indices-mode .col-pre.down { color: #ef9a9a !important; }
     .market-table.indices-mode .pre-label { color: rgba(255,255,255,0.55); font-size: 0.7rem; }
 
     .market-table.indices-mode tr:hover td { filter: brightness(1.18) !important; }
@@ -1318,7 +1317,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.1</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.2</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1932,11 +1931,16 @@ function renderCard(item) {
   return card;
 }
 
+const NAME_OVERRIDE = {
+  'BZ=F': 'BRENT',
+  'CL=F': 'CRUDE OIL',
+};
+
 function updateMarketData(dataArr) {
   dataArr.forEach(d => {
     const prev = STATE.marketData[d.symbol];
     STATE.marketData[d.symbol] = {
-      name:            d.name,
+      name:            NAME_OVERRIDE[d.symbol] || d.name,
       price:           d.price,
       change:          d.change,
       preMarketPrice:  d.preMarketPrice,
