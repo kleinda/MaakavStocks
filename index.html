@@ -1008,14 +1008,18 @@
       color: inherit; margin-top: 0;
     }
 
-    .market-table.indices-mode .mrow-us td     { background: #1a237e !important; color: #fff; }
-    .market-table.indices-mode .mrow-il td     { background: #1b5e20 !important; color: #fff; }
-    .market-table.indices-mode .mrow-crypto td { background: #4a148c !important; color: #fff; }
-    .market-table.indices-mode .mrow-forex td  { background: #006064 !important; color: #fff; }
-    .market-table.indices-mode .mrow-watchlist td { background: #37474f !important; color: #fff; }
-    .market-table.indices-mode .mrow-watch td  { background: #00695c !important; color: #fff; }
-    .market-table.indices-mode .mrow-il-stocks td { background: #4e342e !important; color: #fff; }
-    .market-table.indices-mode .mrow-commodity td { background: #5d4037 !important; color: #fff; }
+    /* Background on TR covers the flex-gap between mobile rows */
+    .market-table.indices-mode .mrow-us     { background: #1a237e !important; }
+    .market-table.indices-mode .mrow-il     { background: #1b5e20 !important; }
+    .market-table.indices-mode .mrow-crypto { background: #4a148c !important; }
+    .market-table.indices-mode .mrow-forex  { background: #006064 !important; }
+    .market-table.indices-mode .mrow-watchlist { background: #37474f !important; }
+    .market-table.indices-mode .mrow-watch  { background: #00695c !important; }
+    .market-table.indices-mode .mrow-il-stocks { background: #4e342e !important; }
+    .market-table.indices-mode .mrow-commodity { background: #5d4037 !important; }
+
+    /* TDs transparent so TR color shows through */
+    .market-table.indices-mode tr.mrow td { background: transparent !important; color: #fff; }
 
     .market-table.indices-mode .clr-up  { color: #69f0ae !important; }
     .market-table.indices-mode .clr-dn  { color: #ff5252 !important; }
@@ -1033,6 +1037,26 @@
       border-radius: 4px; color: #fff; cursor: pointer; line-height: 1;
     }
     .market-table.indices-mode .col-btn button:hover { background: rgba(255,255,255,0.35); }
+
+    /* ── Indices mobile: single-row, no wrapping ── */
+    @media (max-width: 480px) {
+      .market-table.indices-mode tr.mrow {
+        flex-wrap: nowrap !important;
+        padding: 0 8px !important;
+        gap: 0 5px !important;
+        border-bottom: 1px solid rgba(255,255,255,0.12) !important;
+        min-height: 46px;
+      }
+      .market-table.indices-mode .col-break { display: none !important; flex-basis: 0 !important; }
+      .market-table.indices-mode .col-symbol { order: 1; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+      .market-table.indices-mode .col-name-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; font-size: 0.83rem; }
+      .market-table.indices-mode .col-price  { order: 2; font-weight: 700; font-size: 0.82rem; flex-shrink: 0; white-space: nowrap; }
+      .market-table.indices-mode .col-change { order: 3; font-size: 0.8rem; flex-shrink: 0; white-space: nowrap; }
+      .market-table.indices-mode .col-pre    { order: 4; font-size: 0.72rem; flex-shrink: 0; white-space: nowrap; }
+      .market-table.indices-mode .col-pre .pre-label { display: none; }
+      .market-table.indices-mode .col-btn    { order: 5; flex-shrink: 0; margin-right: 0 !important; width: 26px; }
+      .market-table.indices-mode .col-btn button { width: 20px; height: 18px; font-size: 9px; margin: 1px auto; }
+    }
 
     .badge-ma-above  { background: #e8f5e9; color: #1b5e20; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
     .badge-ma-below  { background: #ffebee; color: #b71c1c; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
