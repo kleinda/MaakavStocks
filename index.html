@@ -1202,18 +1202,33 @@
     .market-table.research-mode .col-research-ma { width: 155px; }
 
     /* ATH scan mode */
-    .market-table.ath-mode { width: auto !important; min-width: min(100%, 650px); }
-    .market-table.ath-mode td { white-space: nowrap; vertical-align: middle; padding: 7px 10px; }
-    .market-table.ath-mode .col-ath-sym  { min-width: 90px; width: 110px; font-weight: 700; direction: ltr; }
-    .market-table.ath-mode .col-ath-name { color: var(--text-muted); font-size: 0.85rem; max-width: 220px; }
-    .market-table.ath-mode .col-ath-num  { text-align: right; font-variant-numeric: tabular-nums; width: 80px; }
-    .col-ath-breaks { text-align: center; width: 70px; }
+    /* ATH Scan — 2-row per stock layout */
+    .market-table.ath-mode { width: auto !important; min-width: min(100%, 520px); }
+    .market-table.ath-mode td, .market-table.ath-mode th { white-space: nowrap; vertical-align: middle; padding: 6px 12px; }
+    .market-table.ath-mode th { font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-align: right; border-bottom: 2px solid var(--border, #e0e0e0); }
+    /* Name row (row 1 per stock) */
+    .ath-name-row td { background: rgba(0,0,0,0.025); padding: 8px 12px !important; border-top: 2px solid var(--border, #e0e0e0); }
+    body.dark .ath-name-row td { background: rgba(255,255,255,0.05); }
+    .ath-sym { font-weight: 700; font-size: 0.96rem; direction: ltr; display: inline-block; margin-left: 10px; }
+    .ath-full-name { color: var(--text-muted); font-size: 0.82rem; margin-left: 8px; }
+    /* Data row (row 2 per stock) */
+    .ath-data-row { cursor: pointer; }
+    .ath-data-row:hover td { background: rgba(25,118,210,0.06) !important; }
+    .col-ath-price { width: 90px;  text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .col-ath-chg   { width: 78px;  text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .col-ath-ytd   { width: 78px;  text-align: right; font-variant-numeric: tabular-nums; }
+    .col-ath-ma    { width: 100px; text-align: right; color: #2e7d32; font-weight: 600; }
+    body.dark .col-ath-ma { color: #81c784; }
+    .ath-data-row .up   { color: #2e7d32; }
+    .ath-data-row .down { color: #c62828; }
+    body.dark .ath-data-row .up   { color: #69f0ae; }
+    body.dark .ath-data-row .down { color: #ff5252; }
+    /* Shared ATH styles */
     .badge-ath-breaks { display: inline-block; background: #e8f5e9; color: #2e7d32; border-radius: 10px;
-                        padding: 1px 8px; font-size: 0.75rem; font-weight: 700; }
+                        padding: 1px 8px; font-size: 0.75rem; font-weight: 700; margin: 0 6px; }
     body.dark .badge-ath-breaks { background: #1b3a1f; color: #81c784; }
-    .col-ath-actions { text-align: center; width: 100px; white-space: nowrap; }
     .btn-ath-chart { background: none; border: 1px solid #1976d2; border-radius: 6px; padding: 2px 7px;
-                     font-size: 0.85rem; cursor: pointer; color: #1976d2; margin-left: 4px; }
+                     font-size: 0.85rem; cursor: pointer; color: #1976d2; margin-right: 4px; }
     .btn-ath-chart:hover { background: #e3f0fd; }
     .btn-ath-add { background: none; border: 1px solid #ff8f00; border-radius: 6px; padding: 2px 7px;
                    font-size: 0.75rem; cursor: pointer; color: #ff8f00; font-weight: 600; }
@@ -1228,42 +1243,23 @@
     body.dark .btn-ath-add:hover { background: rgba(129,199,132,0.1); }
     body.dark .ath-in-list { color: #81c784; }
     .ath-scan-info { font-size: 0.78rem; color: var(--text-muted); padding: 4px 10px 8px; }
-    /* Mobile ATH table: 2-row card layout per stock */
+    /* Mobile ATH — name row block, data row flex */
     @media (max-width: 600px) {
       .ath-mode-active #market-table-wrap { overflow-x: hidden !important; }
-      .market-table.ath-mode       { display: block !important; width: 100% !important; min-width: unset !important; }
-      .market-table.ath-mode thead { display: none !important; }
+      .market-table.ath-mode { display: block !important; width: 100% !important; min-width: unset !important; }
+      .market-table.ath-mode thead { display: block !important; position: sticky; top: 0; z-index: 2; background: var(--bg-panel, #fff); }
+      .market-table.ath-mode thead tr { display: flex !important; flex-wrap: nowrap; padding: 3px 8px; border-bottom: 1px solid var(--border, #e0e0e0); }
+      .market-table.ath-mode thead th { display: block !important; padding: 3px 2px !important; flex: 1 1 0; font-size: 0.7rem; text-align: right; }
+      .market-table.ath-mode thead th:last-child { flex: 0 0 auto; }
       .market-table.ath-mode tbody { display: block !important; }
-      .market-table.ath-mode tr:not(.mrow) { display: block !important; }
-      .market-table.ath-mode tr:not(.mrow) td { display: block !important; padding: 4px 10px !important; }
-      /* Each stock row = flex container wrapping into 2 lines */
-      .market-table.ath-mode tr.mrow {
-        display: flex !important; flex-wrap: wrap !important;
-        padding: 7px 8px !important; box-sizing: border-box;
-        border-bottom: 1px solid var(--border, #e0e0e0);
-        align-items: center; gap: 0;
-      }
-      .market-table.ath-mode tr.mrow > td {
-        display: block !important; box-sizing: border-box;
-        padding: 1px 3px !important; border: none !important;
-        white-space: nowrap; font-size: 0.8rem;
-      }
-      /* ── Line 1: Symbol | Name | Price | %Day ── */
-      .market-table.ath-mode tr.mrow > td:nth-child(1) { order:1; flex: 0 0 17%; font-weight:700; font-size:0.86rem; }
-      .market-table.ath-mode tr.mrow > td:nth-child(2) { order:2; flex: 1 1 41%; color:var(--text-muted); font-size:0.74rem; overflow:hidden; text-overflow:ellipsis; }
-      .market-table.ath-mode tr.mrow > td:nth-child(3) { order:3; flex: 0 0 22%; text-align:right; font-weight:600; }
-      .market-table.ath-mode tr.mrow > td:nth-child(4) { order:4; flex: 0 0 20%; text-align:right; }
-      /* ── Line 2: Y2D | MA150 | Breaks | Actions ── */
-      .market-table.ath-mode tr.mrow > td:nth-child(5) { order:5; flex: 0 0 26%; font-size:0.76rem; padding-top:3px !important; }
-      .market-table.ath-mode tr.mrow > td:nth-child(6) { order:6; flex: 0 0 30%; font-size:0.76rem; padding-top:3px !important; }
-      .market-table.ath-mode tr.mrow > td:nth-child(7) { order:7; flex: 0 0 14%; text-align:center; padding-top:3px !important; }
-      .market-table.ath-mode tr.mrow > td:nth-child(8) { order:8; flex: 1 1 auto; text-align:left; padding-top:3px !important; }
-      /* Labels before line-2 values */
-      .market-table.ath-mode tr.mrow > td:nth-child(5)::before { content:'Y2D '; font-size:0.68rem; color:var(--text-muted); }
-      .market-table.ath-mode tr.mrow > td:nth-child(6)::before { content:'MA150 '; font-size:0.68rem; color:var(--text-muted); }
-      /* Compact action buttons on mobile */
-      .market-table.ath-mode .btn-ath-chart { padding: 1px 5px; font-size:0.78rem; margin-left:2px; }
-      .market-table.ath-mode .btn-ath-add   { padding: 1px 5px; font-size:0.72rem; }
+      .ath-name-row { display: block !important; }
+      .ath-name-row td { display: block !important; }
+      .ath-data-row { display: flex !important; flex-wrap: nowrap !important; padding: 4px 8px !important; }
+      .ath-data-row td { display: block !important; flex: 1 1 0; padding: 2px 4px !important; text-align: right; font-size: 0.8rem; white-space: nowrap; }
+      .ath-data-row td:last-child { flex: 0 0 0 !important; overflow: hidden; padding: 0 !important; }
+      .market-table.ath-mode tr:not(.ath-name-row):not(.ath-data-row) { display: block !important; }
+      .market-table.ath-mode tr:not(.ath-name-row):not(.ath-data-row) td { display: block !important; padding: 4px 10px !important; }
+      .market-table.ath-mode .btn-ath-chart { padding: 1px 5px; font-size: 0.78rem; }
     }
     .market-table.research-mode .col-research-earn { width: 160px; }
     .market-table.research-mode .col-research-news { width: auto; }  /* fills rest */
@@ -1323,7 +1319,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.5</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.7</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1797,7 +1793,7 @@ function renderUnifiedTable() {
   const isIndicesMode = _cf.length === 1 &&
     (_cf[0] === 'מדדים ותעודות סל' || _cf[0] === 'מניות חול' ||
      _cf[0] === 'מעקב'             || _cf[0] === 'השיאנים'   ||
-     _cf[0] === 'מניות ישראל');
+     _cf[0] === 'מניות ישראל'      || _cf[0] === 'מטבעות');
   const isTickerMode = _cf.length === 1 &&
     (_cf[0] === 'מניות חול' || _cf[0] === 'מעקב' || _cf[0] === 'השיאנים' ||
      _cf[0] === 'מניות ישראל');
@@ -2826,6 +2822,12 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
   // ATH scan buttons
   const athChart = e.target.closest('.btn-ath-chart');
   if (athChart) { e.stopPropagation(); openChartModal(athChart.dataset.symbol, athChart.dataset.name); return; }
+  const athRow = e.target.closest('.ath-name-row, .ath-data-row');
+  if (athRow && !e.target.closest('button')) {
+    const sym = athRow.dataset.symbol, name = athRow.dataset.name;
+    if (sym) openChartModal(sym, name);
+    return;
+  }
   if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch') ||
       e.target.closest('.btn-hide-market') || e.target.closest('.btn-market-to-watch')) return;
   const tr = e.target.closest('tr.mrow');
@@ -3213,16 +3215,13 @@ async function loadAndRenderATH(force = false) {
   if (cards) cards.innerHTML = '';
   updateJumpBar(null);
 
-  // ATH mode thead
+  // ATH mode thead — labels for the data row (row 2 per stock)
   thead.innerHTML = `<tr>
-    <th class="col-ath-sym" data-col="symbol">סמל</th>
-    <th class="col-ath-name" data-col="name">שם</th>
-    <th class="col-ath-num" data-col="price" style="text-align:right">שער</th>
-    <th class="col-ath-num" data-col="change" style="text-align:right">% יום</th>
-    <th class="col-ath-num" data-col="ytd"    style="text-align:right">Y2D%</th>
-    <th class="col-ath-num" data-col="ma150"  style="text-align:right">מעל MA150</th>
-    <th class="col-ath-breaks" data-col="breaks">שיאים Y2D</th>
-    <th id="ath-rescan-cell" style="text-align:center;white-space:nowrap">
+    <th class="col-ath-price" data-col="price"  style="text-align:right">שער</th>
+    <th class="col-ath-chg"   data-col="change" style="text-align:right">% יום</th>
+    <th class="col-ath-ytd"   data-col="ytd"    style="text-align:right">Y2D%</th>
+    <th class="col-ath-ma"    data-col="ma150"  style="text-align:right">מעל MA150</th>
+    <th id="ath-rescan-cell" style="text-align:left;white-space:nowrap">
       <button id="btn-ath-rescan" style="background:#ff8f00;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:0.78rem;cursor:pointer" title="סרוק מחדש">🔄 סרוק מחדש</button>
     </th>
   </tr>`;
@@ -3246,7 +3245,7 @@ async function loadAndRenderATH(force = false) {
     }
   }
 
-  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:#aaa">
+  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa">
     <span class="spinner"></span> סורק S&P 500 — עשוי לקחת כדקה בפעם הראשונה...
   </td></tr>`;
 
@@ -3306,7 +3305,7 @@ function renderATHTable(data) {
   tbody.innerHTML = '';
 
   if (!data || data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#aaa">לא נמצאו מניות בשיא כרגע</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:#aaa">לא נמצאו מניות בשיא כרגע</td></tr>`;
     return;
   }
 
@@ -3314,35 +3313,42 @@ function renderATHTable(data) {
   const cls    = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
 
   data.forEach(d => {
-    const tr = document.createElement('tr');
-    tr.className = 'mrow mrow-watchlist';
-    tr.style.cursor = 'pointer';
-    tr.dataset.symbol = d.symbol;
-    tr.dataset.name   = d.name;
     const ma = d.ma150Pct != null ? `+${d.ma150Pct.toFixed(1)}%` : '—';
-    const breaks = d.athBreaks > 0
-      ? `<span class="badge-ath-breaks">×${d.athBreaks}</span>`
-      : '<span style="color:#ccc">—</span>';
-    tr.innerHTML = `
-      <td class="col-ath-sym">
-        <strong style="direction:ltr">${escHtml(d.symbol)}</strong>
-      </td>
-      <td class="col-ath-name">${escHtml(d.name)}</td>
-      <td class="col-ath-num">$${d.price != null ? d.price.toFixed(2) : '—'}</td>
-      <td class="col-ath-num ${cls(d.change)}">${fmtPct(d.change)}</td>
-      <td class="col-ath-num ${cls(d.ytd)}">${fmtPct(d.ytd)}</td>
-      <td class="col-ath-num" style="color:#2e7d32;font-weight:600">${ma}</td>
-      <td class="col-ath-breaks">${breaks}</td>
-      <td class="col-ath-actions">
+    const breaksHtml = d.athBreaks > 0
+      ? `<span class="badge-ath-breaks">×${d.athBreaks} שיאים</span>`
+      : '';
+
+    // Row 1: symbol + name + ATH badge + chart button
+    const nameRow = document.createElement('tr');
+    nameRow.className = 'ath-name-row';
+    nameRow.dataset.symbol = d.symbol;
+    nameRow.dataset.name   = d.name;
+    nameRow.innerHTML = `
+      <td colspan="5">
+        <span class="ath-sym">${escHtml(d.symbol)}</span>
+        <span class="ath-full-name">${escHtml(d.name)}</span>
+        ${breaksHtml}
         <button class="btn-ath-chart" data-symbol="${escHtml(d.symbol)}" data-name="${escHtml(d.name)}" title="גרף">📈</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
+      </td>`;
+    tbody.appendChild(nameRow);
+
+    // Row 2: data columns (aligned with thead)
+    const dataRow = document.createElement('tr');
+    dataRow.className = 'ath-data-row';
+    dataRow.dataset.symbol = d.symbol;
+    dataRow.dataset.name   = d.name;
+    dataRow.innerHTML = `
+      <td class="col-ath-price">$${d.price != null ? d.price.toFixed(2) : '—'}</td>
+      <td class="col-ath-chg ${cls(d.change)}">${fmtPct(d.change)}</td>
+      <td class="col-ath-ytd ${cls(d.ytd)}">${fmtPct(d.ytd)}</td>
+      <td class="col-ath-ma">${ma}</td>
+      <td></td>`;
+    tbody.appendChild(dataRow);
   });
 
   // Info line
   const info = document.createElement('tr');
-  info.innerHTML = `<td colspan="8" class="ath-scan-info">
+  info.innerHTML = `<td colspan="5" class="ath-scan-info">
     ${data.length} מניות בשיא 52 שבועות | S&P 500 | ממוין א-ב
   </td>`;
   tbody.insertBefore(info, tbody.firstChild);
