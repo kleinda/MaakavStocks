@@ -1323,7 +1323,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.3</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.5</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1793,14 +1793,17 @@ function renderUnifiedTable() {
   if (!tbody) return;
   tbody.innerHTML = '';
 
-  const isIndicesMode = STATE.activeFilters.length === 1 &&
-    (STATE.activeFilters[0] === 'מדדים ותעודות סל' ||
-     STATE.activeFilters[0] === 'מניות חול');
-  const isUSStocks = STATE.activeFilters.length === 1 &&
-    STATE.activeFilters[0] === 'מניות חול';
+  const _cf = STATE.activeFilters;
+  const isIndicesMode = _cf.length === 1 &&
+    (_cf[0] === 'מדדים ותעודות סל' || _cf[0] === 'מניות חול' ||
+     _cf[0] === 'מעקב'             || _cf[0] === 'השיאנים'   ||
+     _cf[0] === 'מניות ישראל');
+  const isTickerMode = _cf.length === 1 &&
+    (_cf[0] === 'מניות חול' || _cf[0] === 'מעקב' || _cf[0] === 'השיאנים' ||
+     _cf[0] === 'מניות ישראל');
   const tbl = document.querySelector('.market-table');
   tbl?.classList.toggle('indices-mode', isIndicesMode);
-  tbl?.classList.toggle('stocks-compact', isUSStocks);
+  tbl?.classList.toggle('stocks-compact', isTickerMode);
   const thead = document.getElementById('market-thead');
   if (thead) {
     const symTh = thead.querySelector('[data-col="symbol"]');
@@ -1843,6 +1846,7 @@ function renderUnifiedTable() {
       afterClose ? asset.price > athVal : asset.price >= athVal * 0.998
     );
     const athHtml = isATH ? '<span class="badge-ath">🏆 ATH</span>' : '';
+    const dispSymbol = isTickerMode ? asset.symbol.replace(/\.TA$/i, '') : asset.symbol;
 
     const tr = document.createElement('tr');
     tr.className = `mrow mrow-${asset.group}${isATH ? ' mrow-ath' : ''}`;
@@ -1851,7 +1855,7 @@ function renderUnifiedTable() {
     tr.innerHTML = `
       <td class="col-time">${timeTxt}</td>
       <td class="col-symbol">
-        <div>${escHtml(asset.symbol)}</div>
+        <div>${escHtml(dispSymbol)}</div>
         ${isATH ? athHtml : ''}
         <div class="col-name-sub">${escHtml(asset.name)}</div>
       </td>
