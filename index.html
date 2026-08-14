@@ -1000,13 +1000,22 @@
     .market-table.indices-mode .col-ytd { display: none !important; }
 
     .market-table.indices-mode td,
-    .market-table.indices-mode th { padding: 8px 11px; }
+    .market-table.indices-mode th { padding: 9px 10px; }
 
+    /* Hide ticker, show name prominently, right-aligned */
     .market-table.indices-mode .col-symbol > div:first-child { display: none; }
+    .market-table.indices-mode .col-symbol { text-align: right !important; }
     .market-table.indices-mode .col-name-sub {
       font-weight: 700; font-size: 0.95rem;
-      color: inherit; margin-top: 0;
+      color: inherit; margin-top: 0; text-align: right; direction: rtl;
     }
+
+    /* Desktop fixed-width columns so they line up perfectly */
+    .market-table.indices-mode .col-symbol { width: 36%; }
+    .market-table.indices-mode .col-price  { width: 18%; text-align: right; direction: ltr; }
+    .market-table.indices-mode .col-change { width: 16%; text-align: right; font-weight: 700; }
+    .market-table.indices-mode .col-pre    { width: 20%; text-align: right; direction: ltr; }
+    .market-table.indices-mode .col-btn    { width: 36px; }
 
     /* Background on TR covers the flex-gap between mobile rows */
     .market-table.indices-mode .mrow-us     { background: #1a237e !important; }
@@ -1021,14 +1030,20 @@
     /* TDs transparent so TR color shows through */
     .market-table.indices-mode tr.mrow td { background: transparent !important; color: #fff; }
 
-    .market-table.indices-mode .clr-up  { color: #69f0ae !important; }
-    .market-table.indices-mode .clr-dn  { color: #ff5252 !important; }
+    /* Change column: bright green / red regardless of row color */
+    .market-table.indices-mode .col-change.clr-up  { color: #00e676 !important; }
+    .market-table.indices-mode .col-change.clr-dn  { color: #ff5252 !important; }
+    .market-table.indices-mode .col-change.clr-neu { color: #bdbdbd !important; }
+    /* Non-change cells: subtle muted colors */
+    .market-table.indices-mode .clr-up  { color: #a5d6a7 !important; }
+    .market-table.indices-mode .clr-dn  { color: #ef9a9a !important; }
     .market-table.indices-mode .clr-neu { color: #bdbdbd !important; }
-    .market-table.indices-mode .pre-label { color: rgba(255,255,255,0.6); font-size: 0.7rem; }
+    .market-table.indices-mode .pre-label { color: rgba(255,255,255,0.55); font-size: 0.7rem; }
 
     .market-table.indices-mode tr:hover td { filter: brightness(1.18) !important; }
+    .market-table.indices-mode tr.mrow { cursor: pointer; }
 
-    .market-table.indices-mode .col-btn { width: 30px; padding: 2px 3px; text-align: center; }
+    .market-table.indices-mode .col-btn { width: 36px; padding: 2px 3px; text-align: center; }
     .market-table.indices-mode .col-btn button {
       display: block; width: 22px; height: 20px;
       font-size: 10px; padding: 0; margin: 2px auto;
@@ -1038,23 +1053,45 @@
     }
     .market-table.indices-mode .col-btn button:hover { background: rgba(255,255,255,0.35); }
 
-    /* ── Indices mobile: single-row, no wrapping ── */
+    /* ── Indices mobile: single-row, fixed widths, with header ── */
     @media (max-width: 480px) {
+      /* Show thead as sticky header row */
+      .market-table.indices-mode thead { display: block !important; position: sticky; top: 0; z-index: 2; }
+      .market-table.indices-mode thead tr {
+        display: flex !important; flex-wrap: nowrap !important;
+        padding: 4px 8px !important; gap: 0 5px !important;
+        background: rgba(255,255,255,0.13) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.2) !important;
+      }
+      .market-table.indices-mode thead th {
+        display: block !important; padding: 3px 0 !important;
+        color: rgba(255,255,255,0.75); font-size: 0.7rem; font-weight: 700;
+        text-align: right; border: none; white-space: nowrap; background: transparent !important;
+      }
+      /* Header column widths — same proportions as data rows */
+      .market-table.indices-mode thead th[data-col="symbol"] { flex: 0 0 34%; }
+      .market-table.indices-mode thead th[data-col="price"]  { flex: 0 0 21%; text-align: right; }
+      .market-table.indices-mode thead th[data-col="change"] { flex: 0 0 18%; text-align: right; }
+      .market-table.indices-mode thead th[data-col="pre"]    { flex: 0 0 17%; text-align: right; }
+      .market-table.indices-mode thead th:last-child          { flex: 0 0 26px; }
+
+      /* Data rows: single-row, no wrap */
       .market-table.indices-mode tr.mrow {
         flex-wrap: nowrap !important;
         padding: 0 8px !important;
         gap: 0 5px !important;
-        border-bottom: 1px solid rgba(255,255,255,0.12) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
         min-height: 46px;
       }
       .market-table.indices-mode .col-break { display: none !important; flex-basis: 0 !important; }
-      .market-table.indices-mode .col-symbol { order: 1; flex: 1 1 auto; min-width: 0; overflow: hidden; }
-      .market-table.indices-mode .col-name-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; font-size: 0.83rem; }
-      .market-table.indices-mode .col-price  { order: 2; font-weight: 700; font-size: 0.82rem; flex-shrink: 0; white-space: nowrap; }
-      .market-table.indices-mode .col-change { order: 3; font-size: 0.8rem; flex-shrink: 0; white-space: nowrap; }
-      .market-table.indices-mode .col-pre    { order: 4; font-size: 0.72rem; flex-shrink: 0; white-space: nowrap; }
+      /* Fixed flex widths — same as header */
+      .market-table.indices-mode .col-symbol { order: 1; flex: 0 0 34%; min-width: 0; overflow: hidden; text-align: right !important; }
+      .market-table.indices-mode .col-name-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.83rem; }
+      .market-table.indices-mode .col-price  { order: 2; flex: 0 0 21%; font-weight: 700; font-size: 0.83rem; text-align: right; direction: ltr; white-space: nowrap; }
+      .market-table.indices-mode .col-change { order: 3; flex: 0 0 18%; font-size: 0.82rem; font-weight: 700; text-align: right; white-space: nowrap; }
+      .market-table.indices-mode .col-pre    { order: 4; flex: 0 0 17%; font-size: 0.74rem; text-align: right; direction: ltr; white-space: nowrap; min-width: 0; overflow: hidden; }
       .market-table.indices-mode .col-pre .pre-label { display: none; }
-      .market-table.indices-mode .col-btn    { order: 5; flex-shrink: 0; margin-right: 0 !important; width: 26px; }
+      .market-table.indices-mode .col-btn    { order: 5; flex: 0 0 26px; margin-right: 0 !important; text-align: center; }
       .market-table.indices-mode .col-btn button { width: 20px; height: 18px; font-size: 9px; margin: 1px auto; }
     }
 
@@ -1281,7 +1318,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.0</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.1</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -2774,7 +2811,10 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
   if (!tr) return;
   const symbol = tr.dataset.symbol || tr.querySelector('.col-symbol div')?.textContent?.trim();
   const name   = tr.dataset.name   || tr.querySelector('.col-name')?.textContent?.trim();
-  if (symbol) openChartModal(symbol, name);
+  if (symbol) {
+    const isIndices = document.querySelector('.market-table')?.classList.contains('indices-mode');
+    openChartModal(symbol, name, isIndices ? '1d' : '5m', isIndices ? '1y' : '1d');
+  }
 });
 
 // AI button clicks inside research cards (mobile)
