@@ -1202,33 +1202,23 @@
     .market-table.research-mode .col-research-ma { width: 155px; }
 
     /* ATH scan mode */
-    /* ATH Scan — 2-row per stock layout */
-    .market-table.ath-mode { width: auto !important; min-width: min(100%, 520px); }
-    .market-table.ath-mode td, .market-table.ath-mode th { white-space: nowrap; vertical-align: middle; padding: 6px 12px; }
-    .market-table.ath-mode th { font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-align: right; border-bottom: 2px solid var(--border, #e0e0e0); }
-    /* Name row (row 1 per stock) */
-    .ath-name-row td { background: rgba(0,0,0,0.025); padding: 8px 12px !important; border-top: 2px solid var(--border, #e0e0e0); }
-    body.dark .ath-name-row td { background: rgba(255,255,255,0.05); }
-    .ath-sym { font-weight: 700; font-size: 0.96rem; direction: ltr; display: inline-block; margin-left: 10px; }
-    .ath-full-name { color: var(--text-muted); font-size: 0.82rem; margin-left: 8px; }
-    /* Data row (row 2 per stock) */
-    .ath-data-row { cursor: pointer; }
-    .ath-data-row:hover td { background: rgba(25,118,210,0.06) !important; }
-    .col-ath-price { width: 90px;  text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .col-ath-chg   { width: 78px;  text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .col-ath-ytd   { width: 78px;  text-align: right; font-variant-numeric: tabular-nums; }
-    .col-ath-ma    { width: 100px; text-align: right; color: #2e7d32; font-weight: 600; }
-    body.dark .col-ath-ma { color: #81c784; }
-    .ath-data-row .up   { color: #2e7d32; }
-    .ath-data-row .down { color: #c62828; }
-    body.dark .ath-data-row .up   { color: #69f0ae; }
-    body.dark .ath-data-row .down { color: #ff5252; }
-    /* Shared ATH styles */
+    /* ATH Scan — single row per stock */
+    .market-table.ath-mode { width: auto !important; min-width: min(100%, 640px); }
+    .market-table.ath-mode td,
+    .market-table.ath-mode th { white-space: nowrap; vertical-align: middle; padding: 7px 10px; }
+    .market-table.ath-mode .col-ath-sym  { width: 80px;  font-weight: 700; direction: ltr; }
+    .market-table.ath-mode .col-ath-num  { width: 80px;  text-align: right; font-variant-numeric: tabular-nums; }
+    .col-ath-breaks  { width: 65px;  text-align: center; }
+    .col-ath-actions { width: 70px;  text-align: center; }
+    .market-table.ath-mode .up   { color: #2e7d32; }
+    .market-table.ath-mode .down { color: #c62828; }
+    body.dark .market-table.ath-mode .up   { color: #69f0ae; }
+    body.dark .market-table.ath-mode .down { color: #ff5252; }
     .badge-ath-breaks { display: inline-block; background: #e8f5e9; color: #2e7d32; border-radius: 10px;
-                        padding: 1px 8px; font-size: 0.75rem; font-weight: 700; margin: 0 6px; }
+                        padding: 1px 8px; font-size: 0.75rem; font-weight: 700; }
     body.dark .badge-ath-breaks { background: #1b3a1f; color: #81c784; }
     .btn-ath-chart { background: none; border: 1px solid #1976d2; border-radius: 6px; padding: 2px 7px;
-                     font-size: 0.85rem; cursor: pointer; color: #1976d2; margin-right: 4px; }
+                     font-size: 0.85rem; cursor: pointer; color: #1976d2; margin-left: 4px; }
     .btn-ath-chart:hover { background: #e3f0fd; }
     .btn-ath-add { background: none; border: 1px solid #ff8f00; border-radius: 6px; padding: 2px 7px;
                    font-size: 0.75rem; cursor: pointer; color: #ff8f00; font-weight: 600; }
@@ -1243,28 +1233,38 @@
     body.dark .btn-ath-add:hover { background: rgba(129,199,132,0.1); }
     body.dark .ath-in-list { color: #81c784; }
     .ath-scan-info { font-size: 0.78rem; color: var(--text-muted); padding: 4px 10px 8px; }
-    /* Mobile ATH — name row block, data row flex */
+    /* Mobile ATH — flex-wrap 2-line layout */
     @media (max-width: 600px) {
       .ath-mode-active #market-table-wrap { overflow-x: hidden !important; }
-      .market-table.ath-mode { display: block !important; width: 100% !important; min-width: unset !important; }
-      .market-table.ath-mode thead { display: block !important; position: sticky; top: 0; z-index: 2; background: var(--bg-panel, #fff); }
-      .market-table.ath-mode thead tr { display: flex !important; flex-wrap: nowrap; padding: 3px 8px; border-bottom: 1px solid var(--border, #e0e0e0); }
-      .market-table.ath-mode thead th { display: block !important; padding: 3px 2px !important; flex: 1 1 0; font-size: 0.7rem; text-align: right; }
-      .market-table.ath-mode thead th:last-child { flex: 0 0 auto; }
+      .market-table.ath-mode       { display: block !important; width: 100% !important; min-width: unset !important; }
+      .market-table.ath-mode thead { display: none !important; }
       .market-table.ath-mode tbody { display: block !important; }
-      .ath-name-row { display: block !important; }
-      .ath-name-row td { display: block !important; }
-      .ath-data-row { display: flex !important; flex-wrap: nowrap !important; padding: 4px 8px !important; }
-      .ath-data-row td { display: block !important; flex: 1 1 0; padding: 2px 4px !important; text-align: right; font-size: 0.8rem; white-space: nowrap; }
-      .ath-data-row td:last-child { flex: 0 0 0 !important; overflow: hidden; padding: 0 !important; }
-      .market-table.ath-mode tr:not(.ath-name-row):not(.ath-data-row) { display: block !important; }
-      .market-table.ath-mode tr:not(.ath-name-row):not(.ath-data-row) td { display: block !important; padding: 4px 10px !important; }
-      .market-table.ath-mode .btn-ath-chart { padding: 1px 5px; font-size: 0.78rem; }
+      .market-table.ath-mode tr:not(.mrow) { display: block !important; }
+      .market-table.ath-mode tr:not(.mrow) td { display: block !important; padding: 4px 10px !important; }
+      .market-table.ath-mode tr.mrow {
+        display: flex !important; flex-wrap: wrap !important;
+        padding: 7px 8px !important; border-bottom: 1px solid var(--border, #e0e0e0); align-items: center;
+      }
+      .market-table.ath-mode tr.mrow > td {
+        display: block !important; padding: 1px 3px !important; border: none !important;
+        white-space: nowrap; font-size: 0.8rem; box-sizing: border-box;
+      }
+      .market-table.ath-mode tr.mrow > td:nth-child(1) { order:1; flex: 0 0 17%; font-weight:700; font-size:0.86rem; }
+      .market-table.ath-mode tr.mrow > td:nth-child(2) { order:2; flex: 0 0 22%; text-align:right; font-weight:600; }
+      .market-table.ath-mode tr.mrow > td:nth-child(3) { order:3; flex: 0 0 20%; text-align:right; }
+      .market-table.ath-mode tr.mrow > td:nth-child(4) { order:4; flex: 0 0 21%; text-align:right; font-size:0.76rem; padding-top:3px !important; }
+      .market-table.ath-mode tr.mrow > td:nth-child(5) { order:5; flex: 0 0 30%; text-align:right; font-size:0.76rem; padding-top:3px !important; }
+      .market-table.ath-mode tr.mrow > td:nth-child(6) { order:6; flex: 0 0 14%; text-align:center; padding-top:3px !important; }
+      .market-table.ath-mode tr.mrow > td:nth-child(7) { order:7; flex: 1 1 auto; text-align:left; padding-top:3px !important; }
+      .market-table.ath-mode tr.mrow > td:nth-child(4)::before { content:'Y2D '; font-size:0.68rem; color:var(--text-muted); }
+      .market-table.ath-mode tr.mrow > td:nth-child(5)::before { content:'MA150 '; font-size:0.68rem; color:var(--text-muted); }
+      .market-table.ath-mode .btn-ath-chart { padding: 1px 5px; font-size:0.78rem; margin-left:2px; }
     }
     .market-table.research-mode .col-research-earn { width: 160px; }
     .market-table.research-mode .col-research-news { width: auto; }  /* fills rest */
     .col-research-name { font-size: 0.74rem; color: var(--text-muted); font-weight: 400; display: block; line-height: 1.3; }
-    .chart-name   { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .chart-name   { font-size: 0.82rem; color: #00897b; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    body.dark .chart-name { color: #4db6ac; }
     .chart-close  {
       background: none; border: none; font-size: 1.3rem;
       color: var(--text-muted); cursor: pointer;
@@ -1309,7 +1309,7 @@
     body.dark .chart-range-btn.active { background: #1976d2; color: #fff; }
     body.dark .chart-range-btn[data-range="1d"] { color: #e8eaf6; }
     .chart-canvas-wrap { height: 280px; position: relative; }
-    @media (max-width: 480px) { .chart-overlay { padding: 8px; } .chart-canvas-wrap { height: 200px; } .chart-box { padding: 12px; gap: 8px; } .chart-name { display: none; } }
+    @media (max-width: 480px) { .chart-overlay { padding: 8px; } .chart-canvas-wrap { height: 200px; } .chart-box { padding: 12px; gap: 8px; } }
   </style>
 </head>
 <body>
@@ -1319,7 +1319,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.7</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.8</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1793,10 +1793,11 @@ function renderUnifiedTable() {
   const isIndicesMode = _cf.length === 1 &&
     (_cf[0] === 'מדדים ותעודות סל' || _cf[0] === 'מניות חול' ||
      _cf[0] === 'מעקב'             || _cf[0] === 'השיאנים'   ||
-     _cf[0] === 'מניות ישראל'      || _cf[0] === 'מטבעות');
+     _cf[0] === 'מניות ישראל'      || _cf[0] === 'מטבעות'    ||
+     _cf[0] === 'אגחים');
   const isTickerMode = _cf.length === 1 &&
     (_cf[0] === 'מניות חול' || _cf[0] === 'מעקב' || _cf[0] === 'השיאנים' ||
-     _cf[0] === 'מניות ישראל');
+     _cf[0] === 'מניות ישראל' || _cf[0] === 'אגחים');
   const tbl = document.querySelector('.market-table');
   tbl?.classList.toggle('indices-mode', isIndicesMode);
   tbl?.classList.toggle('stocks-compact', isTickerMode);
@@ -2821,13 +2822,7 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
 
   // ATH scan buttons
   const athChart = e.target.closest('.btn-ath-chart');
-  if (athChart) { e.stopPropagation(); openChartModal(athChart.dataset.symbol, athChart.dataset.name); return; }
-  const athRow = e.target.closest('.ath-name-row, .ath-data-row');
-  if (athRow && !e.target.closest('button')) {
-    const sym = athRow.dataset.symbol, name = athRow.dataset.name;
-    if (sym) openChartModal(sym, name);
-    return;
-  }
+  if (athChart) { e.stopPropagation(); openChartModal(athChart.dataset.symbol, athChart.dataset.name, '1d', '1y'); return; }
   if (e.target.closest('.btn-remove-row') || e.target.closest('.btn-to-watch') ||
       e.target.closest('.btn-hide-market') || e.target.closest('.btn-market-to-watch')) return;
   const tr = e.target.closest('tr.mrow');
@@ -2835,8 +2830,9 @@ document.getElementById('market-tbody').addEventListener('click', function(e) {
   const symbol = tr.dataset.symbol || tr.querySelector('.col-symbol div')?.textContent?.trim();
   const name   = tr.dataset.name   || tr.querySelector('.col-name')?.textContent?.trim();
   if (symbol) {
-    const isIndices = document.querySelector('.market-table')?.classList.contains('indices-mode');
-    openChartModal(symbol, name, isIndices ? '1d' : '5m', isIndices ? '1y' : '1d');
+    const tblCls = document.querySelector('.market-table')?.classList;
+    const use1Y  = tblCls?.contains('indices-mode') || tblCls?.contains('ath-mode');
+    openChartModal(symbol, name, use1Y ? '1d' : '5m', use1Y ? '1y' : '1d');
   }
 });
 
@@ -3215,13 +3211,15 @@ async function loadAndRenderATH(force = false) {
   if (cards) cards.innerHTML = '';
   updateJumpBar(null);
 
-  // ATH mode thead — labels for the data row (row 2 per stock)
+  // ATH mode thead
   thead.innerHTML = `<tr>
-    <th class="col-ath-price" data-col="price"  style="text-align:right">שער</th>
-    <th class="col-ath-chg"   data-col="change" style="text-align:right">% יום</th>
-    <th class="col-ath-ytd"   data-col="ytd"    style="text-align:right">Y2D%</th>
-    <th class="col-ath-ma"    data-col="ma150"  style="text-align:right">מעל MA150</th>
-    <th id="ath-rescan-cell" style="text-align:left;white-space:nowrap">
+    <th class="col-ath-sym"    data-col="symbol">סמל</th>
+    <th class="col-ath-num"    data-col="price"  style="text-align:right">שער</th>
+    <th class="col-ath-num"    data-col="change" style="text-align:right">% יום</th>
+    <th class="col-ath-num"    data-col="ytd"    style="text-align:right">Y2D%</th>
+    <th class="col-ath-num"    data-col="ma150"  style="text-align:right">MA150%</th>
+    <th class="col-ath-breaks" data-col="breaks">×שיאים</th>
+    <th id="ath-rescan-cell" style="text-align:center;white-space:nowrap">
       <button id="btn-ath-rescan" style="background:#ff8f00;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:0.78rem;cursor:pointer" title="סרוק מחדש">🔄 סרוק מחדש</button>
     </th>
   </tr>`;
@@ -3245,7 +3243,7 @@ async function loadAndRenderATH(force = false) {
     }
   }
 
-  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:#aaa">
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:#aaa">
     <span class="spinner"></span> סורק S&P 500 — עשוי לקחת כדקה בפעם הראשונה...
   </td></tr>`;
 
@@ -3305,7 +3303,7 @@ function renderATHTable(data) {
   tbody.innerHTML = '';
 
   if (!data || data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:#aaa">לא נמצאו מניות בשיא כרגע</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#aaa">לא נמצאו מניות בשיא כרגע</td></tr>`;
     return;
   }
 
@@ -3313,42 +3311,31 @@ function renderATHTable(data) {
   const cls    = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
 
   data.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.className = 'mrow mrow-watchlist';
+    tr.style.cursor = 'pointer';
+    tr.dataset.symbol = d.symbol;
+    tr.dataset.name   = d.name;
     const ma = d.ma150Pct != null ? `+${d.ma150Pct.toFixed(1)}%` : '—';
-    const breaksHtml = d.athBreaks > 0
-      ? `<span class="badge-ath-breaks">×${d.athBreaks} שיאים</span>`
-      : '';
-
-    // Row 1: symbol + name + ATH badge + chart button
-    const nameRow = document.createElement('tr');
-    nameRow.className = 'ath-name-row';
-    nameRow.dataset.symbol = d.symbol;
-    nameRow.dataset.name   = d.name;
-    nameRow.innerHTML = `
-      <td colspan="5">
-        <span class="ath-sym">${escHtml(d.symbol)}</span>
-        <span class="ath-full-name">${escHtml(d.name)}</span>
-        ${breaksHtml}
+    const breaks = d.athBreaks > 0
+      ? `<span class="badge-ath-breaks">×${d.athBreaks}</span>`
+      : '<span style="color:#ccc">—</span>';
+    tr.innerHTML = `
+      <td class="col-ath-sym"><strong>${escHtml(d.symbol)}</strong></td>
+      <td class="col-ath-num">$${d.price != null ? d.price.toFixed(2) : '—'}</td>
+      <td class="col-ath-num ${cls(d.change)}">${fmtPct(d.change)}</td>
+      <td class="col-ath-num ${cls(d.ytd)}">${fmtPct(d.ytd)}</td>
+      <td class="col-ath-num" style="color:#2e7d32;font-weight:600">${ma}</td>
+      <td class="col-ath-breaks">${breaks}</td>
+      <td class="col-ath-actions">
         <button class="btn-ath-chart" data-symbol="${escHtml(d.symbol)}" data-name="${escHtml(d.name)}" title="גרף">📈</button>
       </td>`;
-    tbody.appendChild(nameRow);
-
-    // Row 2: data columns (aligned with thead)
-    const dataRow = document.createElement('tr');
-    dataRow.className = 'ath-data-row';
-    dataRow.dataset.symbol = d.symbol;
-    dataRow.dataset.name   = d.name;
-    dataRow.innerHTML = `
-      <td class="col-ath-price">$${d.price != null ? d.price.toFixed(2) : '—'}</td>
-      <td class="col-ath-chg ${cls(d.change)}">${fmtPct(d.change)}</td>
-      <td class="col-ath-ytd ${cls(d.ytd)}">${fmtPct(d.ytd)}</td>
-      <td class="col-ath-ma">${ma}</td>
-      <td></td>`;
-    tbody.appendChild(dataRow);
+    tbody.appendChild(tr);
   });
 
   // Info line
   const info = document.createElement('tr');
-  info.innerHTML = `<td colspan="5" class="ath-scan-info">
+  info.innerHTML = `<td colspan="7" class="ath-scan-info">
     ${data.length} מניות בשיא 52 שבועות | S&P 500 | ממוין א-ב
   </td>`;
   tbody.insertBefore(info, tbody.firstChild);
