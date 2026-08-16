@@ -1002,13 +1002,10 @@
     .market-table.indices-mode td,
     .market-table.indices-mode th { padding: 9px 10px; }
 
-    /* Hide ticker, show name prominently, right-aligned */
-    .market-table.indices-mode .col-symbol > div:first-child { display: none; }
+    /* Compact indices: name is in div:first-child (set by JS), col-name-sub hidden */
     .market-table.indices-mode .col-symbol { text-align: right !important; }
-    .market-table.indices-mode .col-name-sub {
-      font-weight: 700; font-size: 0.95rem;
-      color: inherit; margin-top: 0; text-align: right; direction: rtl;
-    }
+    .market-table.indices-mode .col-symbol > div:first-child { font-weight: 700; font-size: 0.95rem; color: inherit; }
+    .market-table.indices-mode .col-name-sub { display: none !important; }
 
     /* Desktop fixed-width columns so they line up perfectly */
     .market-table.indices-mode .col-symbol { width: 36%; }
@@ -1130,7 +1127,25 @@
                        border-right: 3px solid #1976d2; white-space: pre-wrap; }
     body.dark .ai-summary-cell { background: #0d1a2e; color: #90caf9; border-right-color: #3f51b5; }
     .ai-label { font-weight: 700; margin-left: 8px; }
-    .ai-date  { font-size: 0.75rem; color: var(--text-muted); margin-left: 6px; }
+    .ai-date  { font-size: 0.75rem; color: #1565c0; font-weight: 600; margin-left: 6px; }
+    body.dark .ai-date { color: #64b5f6; }
+    .ai-earn-tag { font-size: 0.72rem; background: #e8f5e9; color: #2e7d32; border-radius: 4px; padding: 1px 6px; margin-right: 4px; font-weight: 600; }
+    body.dark .ai-earn-tag { background: #1b5e20; color: #a5d6a7; }
+    .ai-ma-tag { font-size: 0.72rem; border-radius: 4px; padding: 1px 6px; margin-right: 4px; font-weight: 600; }
+    .ai-ma-above { background: #e8f5e9; color: #2e7d32; }
+    .ai-ma-below { background: #ffebee; color: #c62828; }
+    body.dark .ai-ma-above { background: #1b5e20; color: #a5d6a7; }
+    body.dark .ai-ma-below { background: #3b0000; color: #ef9a9a; }
+    .ai-rec { margin-top: 9px; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.88rem;
+              background: linear-gradient(135deg, #ede7f6, #e8eaf6); color: #4527a0;
+              border-right: 4px solid #7c4dff; white-space: normal; }
+    body.dark .ai-rec { background: linear-gradient(135deg, #1a0040, #0d1b30); color: #ce93d8; border-right-color: #9c6dff; }
+    .ai-summary-meta { margin-bottom: 6px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+    .btn-clear-ai { font-size: 0.78rem; background: transparent; border: 1px solid #ef9a9a; color: #e53935; border-radius: 4px; cursor: pointer; padding: 2px 6px; }
+    .btn-clear-ai:hover { background: #ffebee; }
+    body.dark .btn-clear-ai { border-color: #b71c1c; color: #ef5350; }
+    body.dark .btn-clear-ai:hover { background: #1a0000; }
+    .rc-clear-ai { margin-right: 6px; }
     /* Research cards — hidden by default, shown only in mobile research mode */
     #research-cards { display: none; padding: 6px 8px; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 0; }
     /* In research mode on mobile: show cards, hide table */
@@ -1319,7 +1334,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v103.8</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v105.0</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1543,6 +1558,7 @@ const STATE = {
   isLoading:  false,
   activeFilters: ['מדדים ותעודות סל'],
   researchData: {},       // { AAPL: { ma150, aboveMa150, earningsDate, upgrades, news } }
+  researchUpdatedAt: null,
   researchLoading: false,
   aiSummaries: {},        // { AAPL: { summary, updatedAt } }  ← Firebase cached
   lastMarketQuotes: [],
@@ -1843,7 +1859,10 @@ function renderUnifiedTable() {
       afterClose ? asset.price > athVal : asset.price >= athVal * 0.998
     );
     const athHtml = isATH ? '<span class="badge-ath">🏆 ATH</span>' : '';
-    const dispSymbol = isTickerMode ? asset.symbol.replace(/\.TA$/i, '') : asset.symbol;
+    const dispSymbol = isTickerMode
+      ? asset.symbol.replace(/\.TA$/i, '')
+      : isIndicesMode ? (asset.name || asset.symbol)
+      : asset.symbol;
 
     const tr = document.createElement('tr');
     tr.className = `mrow mrow-${asset.group}${isATH ? ' mrow-ath' : ''}`;
@@ -2883,11 +2902,16 @@ async function loadAndRenderResearch() {
       <th class="col-research-ma">MA150</th>
       <th class="col-research-earn">דוח קרוב</th>
       <th class="col-research-news">חדשות (48 שע')</th>
-      <th class="col-research-ai" style="width:100px;text-align:center;white-space:nowrap">
-        <button class="btn-ai-all" id="btn-ai-all" title="סיכום AI לכל המניות">🤖 AI הכל</button>
+      <th class="col-research-ai" style="width:140px;text-align:center;white-space:nowrap">
+        <button class="btn-ai-all" id="btn-ai-all" title="סיכום Perplexity לכל המניות החסרות">🔍 הכל</button>
+        <div id="research-fetch-time" style="font-size:0.65rem;color:#888;margin-top:3px;display:flex;align-items:center;justify-content:center;gap:6px">
+          <span id="research-fetch-time-text">יאהו: טוען...</span>
+          <button class="btn-clear-ai" id="btn-clear-ai" title="מחק כל הסיכומים מ-Firebase">🗑️</button>
+        </div>
       </th>
     </tr>`;
     document.getElementById('btn-ai-all')?.addEventListener('click', e => fetchAllAI(e.currentTarget));
+    document.getElementById('btn-clear-ai')?.addEventListener('click', clearAISummaries);
   }
   tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען...</td></tr>`;
   cards.innerHTML = `<div style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span> טוען נתוני מחקר...</div>`;
@@ -2909,6 +2933,10 @@ async function loadAndRenderResearch() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     data.forEach(d => { STATE.researchData[d.symbol] = d; });
+    STATE.researchUpdatedAt = new Date();
+    const fetchTime = STATE.researchUpdatedAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    const ftEl = document.getElementById('research-fetch-time-text');
+    if (ftEl) ftEl.textContent = `יאהו: ${fetchTime}`;
     renderResearchTable(data);
   } catch(e) {
     const msg = `שגיאה: ${escHtml(e.message)}`;
@@ -2985,7 +3013,7 @@ function _renderResearchTableDesktop(sorted) {
       <td class="col-research-earn">${earnBadge}</td>
       <td class="col-research-news">${newsHtml || '—'}</td>
       <td class="col-research-ai" style="text-align:center;white-space:nowrap">
-        <button class="btn-ai" data-symbol="${escHtml(d.symbol)}" title="סיכום AI">🤖</button>
+        <button class="btn-ai" data-symbol="${escHtml(d.symbol)}" title="Perplexity">🔍</button>
         ${hasSummary ? `<button class="btn-ai-close-desktop" data-symbol="${escHtml(d.symbol)}" title="סגור">✕</button>` : ''}
       </td>`;
     tr.addEventListener('click', e => { if (!e.target.closest('.btn-ai')) openChartModal(d.symbol, name); });
@@ -2994,12 +3022,16 @@ function _renderResearchTableDesktop(sorted) {
     if (hasSummary) {
       const saved = STATE.aiSummaries[d.symbol];
       const dateStr = new Date(saved.updatedAt).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+      const earnDate = saved.earningsDate
+        ? new Date(saved.earningsDate * 1000).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) : null;
+      const earnTag = earnDate ? `<span class="ai-earn-tag">📅 דוח ${earnDate}</span>` : '';
+      const maTag = _aiMaTag(saved);
       const aiRow = document.createElement('tr');
       aiRow.className = 'ai-summary-row';
       aiRow.dataset.aiSymbol = d.symbol;
       aiRow.innerHTML = `<td colspan="7" class="ai-summary-cell">
-        <span class="ai-label">🤖 ${escHtml(d.symbol)}</span><span class="ai-date">· ${dateStr}</span>
-        ${escHtml(saved.summary)}</td>`;
+        <div class="ai-summary-meta"><span class="ai-label">🔍 ${escHtml(d.symbol)}</span><span class="ai-date">עודכן ${dateStr}</span>${maTag}${earnTag}</div>
+        ${_buildAIHtml(saved.summary)}</td>`;
       tbody.appendChild(aiRow);
     }
   });
@@ -3009,14 +3041,32 @@ function _renderResearchCards(sorted) {
   const cards = document.getElementById('research-cards');
   cards.innerHTML = '';
 
-  // "הכל" button at top
+  // Top row: "הכל" button + Yahoo timestamp
   const allBtn = document.createElement('button');
   allBtn.className = 'rc-ai-all';
   allBtn.id = 'btn-ai-all';
-  allBtn.textContent = '🤖 AI הכל';
-  allBtn.title = 'סיכום AI לכל המניות';
+  allBtn.textContent = '🔍 הכל';
+  allBtn.title = 'Perplexity לכל המניות החסרות';
   allBtn.addEventListener('click', e => fetchAllAI(e.currentTarget));
   cards.appendChild(allBtn);
+
+  const ftMobile = document.createElement('span');
+  ftMobile.style.cssText = 'font-size:0.7rem;color:#888;margin-right:8px;align-self:center';
+  ftMobile.textContent = STATE.researchUpdatedAt
+    ? `יאהו: ${STATE.researchUpdatedAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+    : '';
+  cards.appendChild(ftMobile);
+
+  // Separate row for delete button — away from "הכל" to prevent accidental taps
+  const clearRow = document.createElement('div');
+  clearRow.style.cssText = 'width:100%;padding:0 4px 4px;';
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'btn-clear-ai rc-clear-ai';
+  clearBtn.textContent = '🗑️ מחק סיכומי AI';
+  clearBtn.title = 'מחק כל הסיכומים מ-Firebase';
+  clearBtn.addEventListener('click', clearAISummaries);
+  clearRow.appendChild(clearBtn);
+  cards.appendChild(clearRow);
 
   if (sorted.length === 0) {
     cards.innerHTML += `<div style="text-align:center;padding:20px;color:#aaa">אין נתוני מחקר</div>`;
@@ -3037,9 +3087,12 @@ function _renderResearchCards(sorted) {
     card.dataset.symbol = d.symbol;
 
     const aiDateHtml = saved
-      ? `<span class="rc-ai-date">· ${new Date(saved.updatedAt).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>` : '';
+      ? `<span class="rc-ai-date">עודכן ${new Date(saved.updatedAt).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>` : '';
+    const aiEarnHtml = saved?.earningsDate
+      ? `<span class="ai-earn-tag">📅 דוח ${new Date(saved.earningsDate * 1000).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>` : '';
+    const aiMaHtml = _aiMaTag(saved);
     const aiSummaryHtml = saved
-      ? `<div class="rc-ai-summary"><strong>🤖 ${escHtml(d.symbol)}</strong> ${aiDateHtml}<br>${escHtml(saved.summary)}</div>` : '';
+      ? `<div class="rc-ai-summary"><strong>🔍 ${escHtml(d.symbol)}</strong> ${aiDateHtml}${aiMaHtml}${aiEarnHtml}<br>${_buildAIHtml(saved.summary)}</div>` : '';
 
     card.innerHTML = `
       <div class="rc-head">
@@ -3052,7 +3105,7 @@ function _renderResearchCards(sorted) {
         ${earnBadge !== '—' ? earnBadge : ''}
       </div>
       <div class="rc-ai-row">
-        <button class="btn-ai" data-symbol="${escHtml(d.symbol)}">🤖 AI</button>
+        <button class="btn-ai" data-symbol="${escHtml(d.symbol)}">🔍</button>
         ${hasSummary ? `<button class="btn-ai-close" data-symbol="${escHtml(d.symbol)}" title="סגור AI">✕</button>` : ''}
       </div>
       ${aiSummaryHtml}`;
@@ -3062,8 +3115,49 @@ function _renderResearchCards(sorted) {
   });
 }
 
+function _buildAIHtml(text) {
+  text = text.replace(/\s*\[\d+\]/g, ''); // strip [1],[2] citations
+  function toHtml(t) {
+    return escHtml(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
+  // Find recommendation line (any line whose clean text starts with המלצה:)
+  const lines = text.split('\n');
+  const recIdx = lines.findIndex(l => l.replace(/[\*_\s]/g, '').startsWith('המלצה:'));
+  if (recIdx >= 0) {
+    const body = lines.slice(0, recIdx).join('\n').trim();
+    const rec  = lines[recIdx].replace(/[\*_]/g, '').trim();
+    return `${toHtml(body)}<div class="ai-rec">${escHtml(rec)}</div>`;
+  }
+  return toHtml(text);
+}
+
+function _aiMaTag(saved) {
+  if (saved?.aboveMa150 == null) return '';
+  const pct = saved.ma150Pct != null ? Math.abs(saved.ma150Pct).toFixed(1) : '?';
+  return saved.aboveMa150
+    ? `<span class="ai-ma-tag ai-ma-above">↑ MA150 +${pct}%</span>`
+    : `<span class="ai-ma-tag ai-ma-below">↓ MA150 −${pct}%</span>`;
+}
+
+async function clearAISummaries() {
+  if (!confirm('מחיקת כל סיכומי ה-AI מFirebase\n\nאתה בטוח?')) return;
+  try {
+    const snap = await db.collection('ai_summaries').get();
+    await Promise.all(snap.docs.map(d => d.ref.delete()));
+    STATE.aiSummaries = {};
+    renderResearchTable(Object.values(STATE.researchData));
+  } catch(e) { alert('שגיאה: ' + e.message); }
+}
+
 async function saveAISummary(symbol, summary) {
-  const rec = { summary, updatedAt: new Date().toISOString() };
+  const rd = STATE.researchData[symbol];
+  const rec = {
+    summary,
+    updatedAt: new Date().toISOString(),
+    earningsDate: rd?.earningsDate || null,
+    aboveMa150: rd?.aboveMa150 ?? null,
+    ma150Pct: rd?.ma150Pct ?? null,
+  };
   STATE.aiSummaries[symbol] = rec;
   try { await db.collection('ai_summaries').doc(symbol).set(rec); } catch(e) { /* non-critical */ }
 }
@@ -3080,7 +3174,7 @@ async function askAI(symbol, btn) {
       const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(symbol)}`,
                               { signal: AbortSignal.timeout(25000) });
       const data = await res.json();
-      if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר');
+      if (data.error === 'no_key') throw new Error('מפתח PERPLEXITY_API_KEY לא הוגדר');
       if (data.error) throw new Error(data.error);
       await saveAISummary(symbol, data.summary);
       let div = card.querySelector('.rc-ai-summary');
@@ -3099,16 +3193,20 @@ async function askAI(symbol, btn) {
           aiRow.appendChild(closeBtn);
         }
       }
-      div.innerHTML = `<strong>🤖 ${escHtml(symbol)}</strong> <span class="rc-ai-date">· ${dateStr}</span><br>${escHtml(data.summary)}`;
+      const mEarnDate = STATE.aiSummaries[symbol]?.earningsDate
+        ? new Date(STATE.aiSummaries[symbol].earningsDate * 1000).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) : null;
+      const mEarnTag = mEarnDate ? `<span class="ai-earn-tag">📅 דוח ${mEarnDate}</span>` : '';
+      const mMaTag = _aiMaTag(STATE.aiSummaries[symbol]);
+      div.innerHTML = `<strong>🔍 ${escHtml(symbol)}</strong> <span class="rc-ai-date">עודכן ${dateStr}</span>${mMaTag}${mEarnTag}<br>${_buildAIHtml(data.summary)}`;
       div.style.display = '';
     } catch(e) {
       btn.textContent = '⚠️';
       btn.title = e.message;
-      alert('שגיאת AI: ' + e.message);
-      setTimeout(() => { btn.textContent = '🤖 AI'; btn.title = ''; btn.disabled = false; }, 4000);
+      alert('שגיאת Perplexity: ' + e.message);
+      setTimeout(() => { btn.textContent = '🔍'; btn.title = ''; btn.disabled = false; }, 4000);
       btn.disabled = false; return;
     }
-    btn.textContent = '🤖 AI';
+    btn.textContent = '🔍';
     btn.disabled = false;
     return;
   }
@@ -3120,7 +3218,7 @@ async function askAI(symbol, btn) {
     const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(symbol)}`,
                             { signal: AbortSignal.timeout(25000) });
     const data = await res.json();
-    if (data.error === 'no_key') throw new Error('מפתח OPENAI_API_KEY לא הוגדר');
+    if (data.error === 'no_key') throw new Error('מפתח PERPLEXITY_API_KEY לא הוגדר');
     if (data.error) throw new Error(data.error);
     await saveAISummary(symbol, data.summary);
     // Remove existing AI row if any
@@ -3131,7 +3229,11 @@ async function askAI(symbol, btn) {
     const aiRow = document.createElement('tr');
     aiRow.className = 'ai-summary-row';
     aiRow.dataset.aiSymbol = symbol;
-    aiRow.innerHTML = `<td colspan="7" class="ai-summary-cell"><span class="ai-label">🤖 ${escHtml(symbol)}</span><span class="ai-date">· ${dateStr}</span> ${escHtml(data.summary)}</td>`;
+    const dEarnDate = STATE.aiSummaries[symbol]?.earningsDate
+      ? new Date(STATE.aiSummaries[symbol].earningsDate * 1000).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) : null;
+    const dEarnTag = dEarnDate ? `<span class="ai-earn-tag">📅 דוח ${dEarnDate}</span>` : '';
+    const dMaTag = _aiMaTag(STATE.aiSummaries[symbol]);
+    aiRow.innerHTML = `<td colspan="7" class="ai-summary-cell"><div class="ai-summary-meta"><span class="ai-label">🔍 ${escHtml(symbol)}</span><span class="ai-date">עודכן ${dateStr}</span>${dMaTag}${dEarnTag}</div>${_buildAIHtml(data.summary)}</td>`;
     tr.after(aiRow);
     // Ensure close button exists
     const td = tr.querySelector('.col-research-ai');
@@ -3146,54 +3248,72 @@ async function askAI(symbol, btn) {
   } catch(e) {
     btn.textContent = '⚠️';
     btn.title = e.message;
-    alert('שגיאת AI: ' + e.message);
-    setTimeout(() => { btn.textContent = '🤖'; btn.title = 'סיכום AI'; btn.disabled = false; }, 4000);
+    alert('שגיאת Perplexity: ' + e.message);
+    setTimeout(() => { btn.textContent = '🔍'; btn.title = 'Perplexity'; btn.disabled = false; }, 4000);
     btn.disabled = false; return;
   }
-  btn.textContent = '🤖';
+  btn.textContent = '🔍';
   btn.disabled = false;
 }
 
 async function fetchAllAI(btn = null) {
   if (!btn) btn = document.getElementById('btn-ai-all');
   if (!btn) return;
-  const symbols = STATE.watchlist
+
+  const allSymbols = STATE.watchlist
     .filter(i => i.category === 'מניות חול' || i.category === 'מעקב')
     .map(i => i.symbol);
-  if (symbols.length === 0) return;
+
+  // Only fetch symbols that don't already have a summary
+  const symbols = allSymbols.filter(s => !STATE.aiSummaries[s]);
+
+  if (symbols.length === 0) {
+    btn.textContent = '✅ הכל קיים';
+    setTimeout(() => { btn.textContent = '🔍 הכל'; }, 2500);
+    return;
+  }
 
   btn.disabled = true;
   let done = 0;
   const total = symbols.length;
+  const failed = [];
   btn.textContent = `⏳ 0/${total}`;
 
-  try {
-    const BATCH = 3;
-    for (let i = 0; i < symbols.length; i += BATCH) {
-      const batch = symbols.slice(i, i + BATCH);
-      await Promise.allSettled(batch.map(async sym => {
-        try {
-          const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(sym)}`,
-            { signal: AbortSignal.timeout(30000) });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.summary) await saveAISummary(sym, data.summary);
-          }
-        } catch(e) {}
-        done++;
-        btn.textContent = `⏳ ${done}/${total}`;
-      }));
-    }
-    // Re-render with fresh summaries
-    renderResearchTable(symbols.map(s => STATE.researchData[s]).filter(Boolean));
-  } catch(e) {
-    btn.textContent = '⚠️';
-    btn.title = e.message;
-    setTimeout(() => { btn.textContent = '🤖 AI הכל'; btn.disabled = false; }, 4000);
-    return;
+  const BATCH = 3;
+  for (let i = 0; i < symbols.length; i += BATCH) {
+    const batch = symbols.slice(i, i + BATCH);
+    await Promise.allSettled(batch.map(async sym => {
+      let ok = false;
+      try {
+        const res = await fetch(`/proxy/ai-summary?symbol=${encodeURIComponent(sym)}`,
+          { signal: AbortSignal.timeout(35000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.summary) { await saveAISummary(sym, data.summary); ok = true; }
+        }
+      } catch(e) {}
+      if (!ok) failed.push(sym);
+      done++;
+      btn.textContent = `⏳ ${done}/${total}`;
+    }));
   }
+
+  // Re-render with all current summaries (including previously cached ones)
+  renderResearchTable(allSymbols.map(s => STATE.researchData[s]).filter(Boolean));
+
+  // Mark failed buttons ⚠️ — clicking retries via existing askAI handler
+  const cards = document.getElementById('research-cards');
+  for (const sym of failed) {
+    const tr = document.getElementById('rrow-' + sym);
+    const dBtn = tr?.querySelector('.btn-ai');
+    if (dBtn) { dBtn.textContent = '⚠️'; dBtn.title = 'נכשל — לחץ לנסות שוב'; }
+    const cBtn = cards?.querySelector(`[data-symbol="${sym}"] .btn-ai`);
+    if (cBtn) { cBtn.textContent = '⚠️'; cBtn.title = 'נכשל — לחץ לנסות שוב'; }
+  }
+
   btn.disabled = false;
-  btn.textContent = '🤖 AI הכל';
+  btn.textContent = failed.length ? `🔍 הכל ⚠️${failed.length}` : '🔍 הכל';
+  if (failed.length) setTimeout(() => { btn.textContent = '🔍 הכל'; }, 5000);
 }
 
 /* ══════════════════════════════════════════════════════════════

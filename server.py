@@ -24,8 +24,9 @@ if os.path.exists(_env_file):
                 os.environ.setdefault(_k.strip(), _v.strip())
 
 PORT = int(os.environ.get('PORT', 3000))
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
-print(f"[init] OPENAI_API_KEY {'SET (' + OPENAI_API_KEY[:8] + '...)' if OPENAI_API_KEY else 'NOT SET'}", file=sys.stderr)
+OPENAI_API_KEY      = os.environ.get('OPENAI_API_KEY', '')
+PERPLEXITY_API_KEY  = os.environ.get('PERPLEXITY_API_KEY', '')
+print(f"[init] PERPLEXITY_API_KEY {'SET (' + PERPLEXITY_API_KEY[:8] + '...)' if PERPLEXITY_API_KEY else 'NOT SET'}", file=sys.stderr)
 YAHOO_BASE = 'https://query2.finance.yahoo.com/v8/finance/chart/'
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -88,6 +89,9 @@ _SP500_FALLBACK = [
 _sp500_ath_cache      = None
 _sp500_ath_cache_time = 0.0
 SP500_ATH_CACHE_TTL   = 7200   # 2 hours
+
+_research_cache     = {}   # { symbol: (timestamp, data_dict) }
+RESEARCH_CACHE_TTL  = 1800  # 30 minutes
 
 _SP500_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sp500_symbols_cache.json')
 _SP500_CACHE_DAYS = 90  # refresh every 3 months
@@ -395,6 +399,55 @@ def ask_openai(symbol, research):
     return resp['choices'][0]['message']['content'].strip()
 
 
+def ask_perplexity(symbol, research):
+    """Send research data to Perplexity Sonar (live web search) and get Hebrew summary."""
+    key = os.environ.get('PERPLEXITY_API_KEY', '')
+    if not key:
+        raise ValueError('no_key')
+    news_str = ' | '.join(n['title'] for n in research.get('news', [])[:3]) or 'אין חדשות'
+    earn_str = f"בעוד {research['daysToEarnings']} ימים" if research.get('daysToEarnings') is not None else 'לא ידוע'
+    ma_pct   = research.get('ma150Pct', 0) or 0
+    ma_dir   = 'מעל' if research.get('aboveMa150') else 'מתחת'
+    ma_str   = f"{ma_dir} MA150 ב-{ma_pct:.1f}%" if research.get('ma150') else 'לא זמין'
+
+    messages = [
+        {
+            'role': 'system',
+            'content': 'אתה אנליסט מניות תמציתי. ענה תמיד בעברית בדיוק לפי הפורמט המבוקש — אל תחרוג.'
+        },
+        {
+            'role': 'user',
+            'content': (
+                f"נתח את {symbol} בפורמט הזה בלבד:\n\n"
+                f"מצב טכני: [1-2 משפטים — מחיר, MA150, מגמה]\n"
+                f"ביצועים: [1-2 משפטים — דוח אחרון, EPS, הכנסות]\n"
+                f"חדש: [תובנה אחת מחיפוש אינטרנט שלא מופיעה בכותרות הבאות]\n\n"
+                f"נתונים: מחיר ${research.get('price','?')}, {ma_str}, דוח {earn_str}\n"
+                f"כותרות ידועות: {news_str}\n\n"
+                f"המלצה: ✅ קנייה / ⏸️ המתנה / ❌ מכירה — בחר אחד בלבד עם סיבה קצרה"
+            )
+        }
+    ]
+    payload = json.dumps({
+        'model': 'sonar-pro',
+        'messages': messages,
+        'max_tokens': 500,
+        'temperature': 0.3,
+    }).encode('utf-8')
+    req = urllib.request.Request(
+        'https://api.perplexity.ai/chat/completions',
+        data=payload,
+        headers={
+            'Authorization': f'Bearer {key}',
+            'Content-Type': 'application/json',
+        },
+        method='POST'
+    )
+    with urllib.request.urlopen(req, timeout=35) as r:
+        resp = json.loads(r.read().decode())
+    return resp['choices'][0]['message']['content'].strip()
+
+
 class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -500,7 +553,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not symbols:
                 self.send_error(400, 'Missing symbols')
                 return
-            if not OPENAI_API_KEY:
+            if not os.environ.get('PERPLEXITY_API_KEY', ''):
                 body = json.dumps({"error": "no_key"}).encode()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -519,11 +572,11 @@ class Handler(SimpleHTTPRequestHandler):
                             research_map[sym] = fut.result()
                         except Exception:
                             research_map[sym] = {'symbol': sym}
-                # Call OpenAI for each symbol (sequential — avoids rate limits)
+                # Call Perplexity for each symbol (sequential — avoids rate limits)
                 results = []
                 for sym in symbols:
                     try:
-                        summary = ask_openai(sym, research_map.get(sym, {}))
+                        summary = ask_perplexity(sym, research_map.get(sym, {}))
                         results.append({'symbol': sym, 'summary': summary})
                     except Exception as e:
                         results.append({'symbol': sym, 'error': str(e)})
@@ -547,7 +600,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             try:
                 research = fetch_research(symbol)
-                summary = ask_openai(symbol, research)
+                summary = ask_perplexity(symbol, research)
                 body = json.dumps({"symbol": symbol, "summary": summary}, ensure_ascii=False).encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
@@ -578,21 +631,35 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_error(400, 'Missing symbols')
                 return
             try:
-                # Fetch MA150 + news per symbol in parallel
+                global _research_cache
+                now_t = time.time()
+                # Serve from cache where fresh; fetch only stale/missing symbols
                 research_map = {}
-                with ThreadPoolExecutor(max_workers=min(len(symbols), 8)) as ex:
-                    futures = {ex.submit(fetch_research, sym): sym for sym in symbols}
-                    for fut in as_completed(futures, timeout=25):
-                        sym = futures[fut]
-                        try:
-                            research_map[sym] = fut.result()
-                        except Exception:
-                            research_map[sym] = {"symbol": sym}
-                # Fetch earnings from Nasdaq calendar once for all symbols
-                earn_map = fetch_nasdaq_earnings(set(symbols))
-                for sym, earn_data in earn_map.items():
-                    if sym in research_map:
-                        research_map[sym].update(earn_data)
+                stale = []
+                for sym in symbols:
+                    entry = _research_cache.get(sym)
+                    if entry and (now_t - entry[0]) < RESEARCH_CACHE_TTL:
+                        research_map[sym] = entry[1]
+                    else:
+                        stale.append(sym)
+                if stale:
+                    with ThreadPoolExecutor(max_workers=min(len(stale), 8)) as ex:
+                        futures = {ex.submit(fetch_research, sym): sym for sym in stale}
+                        for fut in as_completed(futures, timeout=25):
+                            sym = futures[fut]
+                            try:
+                                d = fut.result()
+                                research_map[sym] = d
+                                _research_cache[sym] = (now_t, d)
+                            except Exception:
+                                research_map[sym] = {"symbol": sym}
+                    # Fetch earnings from Nasdaq calendar only for stale symbols
+                    earn_map = fetch_nasdaq_earnings(set(stale))
+                    for sym, earn_data in earn_map.items():
+                        if sym in research_map:
+                            research_map[sym].update(earn_data)
+                            if sym in _research_cache:
+                                _research_cache[sym] = (now_t, research_map[sym])
                 result = [research_map[sym] for sym in symbols if sym in research_map]
                 body = json.dumps(result, ensure_ascii=False).encode('utf-8')
                 self.send_response(200)
