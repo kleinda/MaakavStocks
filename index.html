@@ -1402,7 +1402,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v105.7</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v105.8</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1681,6 +1681,8 @@ function initFirestoreListener() {
     STATE.watchlist.sort((a, b) => new Date(a.addedAt) - new Date(b.addedAt));
 
     renderUnifiedTable();
+
+    if (STATE.activeFilters[0] === '__insights__') loadAndRenderInsights();
 
     const marketSymbols = new Set(Object.keys(MARKET_META));
 
