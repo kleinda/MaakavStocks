@@ -1325,6 +1325,74 @@
     body.dark .chart-range-btn[data-range="1d"] { color: #e8eaf6; }
     .chart-canvas-wrap { height: 280px; position: relative; }
     @media (max-width: 480px) { .chart-overlay { padding: 8px; } .chart-canvas-wrap { height: 200px; } .chart-box { padding: 12px; gap: 8px; } }
+
+    /* ── Insights Panel ──────────────────────────────────────── */
+    #insights-panel { display: none; padding: 8px; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; min-height: 0; }
+    .insights-mode-active #insights-panel    { display: flex !important; }
+    .insights-mode-active #market-table-wrap { display: none !important; }
+    .insights-mode-active #research-cards    { display: none !important; }
+
+    .ins-search { width:100%; padding:8px 12px; border:1.5px solid #1976d2; border-radius:8px; font-size:0.9rem; background:var(--card-bg); color:var(--text-main); direction:rtl; outline:none; box-sizing:border-box; flex-shrink:0; }
+    body.dark .ins-search { border-color:#3949ab; background:#1e1e2e; }
+
+    .ins-section-hdr { display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; color:#555; padding:6px 8px; border-radius:8px; background:#f5f5f5; cursor:pointer; user-select:none; margin-top:4px; flex-shrink:0; }
+    body.dark .ins-section-hdr { color:#ccc; background:#1e1e2e; }
+    .ins-section-hdr:hover { background:#eeeeee; }
+    body.dark .ins-section-hdr:hover { background:#252535; }
+    .ins-toggle-arrow { margin-right:auto; font-size:0.75rem; color:#90a4ae; transition:transform 0.2s; }
+    .ins-toggle-arrow.open { transform:rotate(90deg); }
+    .ins-count { font-size:0.72rem; font-weight:600; background:#e3f2fd; color:#1565c0; border-radius:10px; padding:1px 8px; }
+    body.dark .ins-count { background:#0d1b30; color:#82b1ff; }
+    .ins-section-body { display:flex; flex-direction:column; gap:8px; flex-shrink:0; }
+    .ins-section-body.collapsed { display:none; }
+
+    .ins-card { border-radius:10px; padding:12px 14px; background:var(--card-bg); border:1.5px solid #e0e0e0; border-right-width:4px; display:flex; flex-direction:column; gap:7px; cursor:pointer; transition:box-shadow 0.15s; flex-shrink:0; }
+    body.dark .ins-card { border-color:#333; }
+    .ins-card:hover { box-shadow:0 2px 14px rgba(0,0,0,0.14); }
+    .ins-card.ins-buy  { border-right-color:#43a047; }
+    .ins-card.ins-hold { border-right-color:#f9a825; }
+    .ins-card.ins-sell { border-right-color:#e53935; }
+    .ins-card.ins-none { border-right-color:#90a4ae; }
+    .ins-earn-soon { background:#fffde7 !important; }
+    body.dark .ins-earn-soon { background:#2a2800 !important; }
+
+    .ins-card-header { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+    .ins-sym  { font-weight:800; font-size:1rem; color:#1565c0; direction:ltr; }
+    body.dark .ins-sym { color:#82b1ff; }
+    .ins-name { font-size:0.8rem; color:var(--text-muted); flex:1; min-width:60px; }
+    .ins-price { font-weight:700; font-size:0.95rem; direction:ltr; }
+    .ins-earn-soon-tag { font-size:0.72rem; background:#ff8f00; color:#fff; border-radius:4px; padding:2px 7px; font-weight:700; animation:pulse-ins 1.4s infinite; }
+    @keyframes pulse-ins { 0%,100%{opacity:1} 50%{opacity:0.55} }
+
+    .ins-badges { display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+    .ins-yahoo-heb { display:flex; flex-wrap:wrap; gap:5px; }
+    .ins-yahoo-pill { font-size:0.73rem; background:#e3f2fd; color:#1565c0; border-radius:12px; padding:2px 8px; }
+    body.dark .ins-yahoo-pill { background:#0d1b30; color:#82b1ff; }
+
+    .ins-filter-row { display:flex; flex-wrap:wrap; gap:6px; padding:6px 0 2px; }
+    .ins-filter-btn { font-size:0.78rem; padding:3px 10px; border-radius:14px; border:1.5px solid #ccc; background:transparent; color:var(--text-main); cursor:pointer; white-space:nowrap; }
+    .ins-filter-btn:hover { background:#f5f5f5; }
+    body.dark .ins-filter-btn:hover { background:#252535; }
+    .ins-filter-btn.active { border-color:#1976d2; background:#e3f2fd; color:#1565c0; font-weight:700; }
+    body.dark .ins-filter-btn.active { background:#0d1b30; color:#82b1ff; border-color:#3949ab; }
+    .ins-filter-btn.f-buy.active  { border-color:#43a047; background:#e8f5e9; color:#1b5e20; }
+    .ins-filter-btn.f-hold.active { border-color:#f9a825; background:#fffde7; color:#e65100; }
+    .ins-filter-btn.f-sell.active { border-color:#e53935; background:#ffebee; color:#b71c1c; }
+    .ins-filter-btn.f-none.active { border-color:#90a4ae; background:#eceff1; color:#455a64; }
+    .ins-filter-count { font-size:0.7rem; opacity:0.75; }
+
+    .ins-ai { font-size:0.82rem; line-height:1.6; color:var(--text-main); white-space:pre-wrap; }
+    .ins-no-ai { font-size:0.78rem; color:#aaa; font-style:italic; text-align:center; padding:6px; }
+    .ins-upd { font-size:0.68rem; color:#90a4ae; align-self:flex-end; }
+
+    .ins-rec-box { margin-top:4px; padding:7px 12px; border-radius:7px; font-weight:700; font-size:0.88rem; background:linear-gradient(135deg,#ede7f6,#e8eaf6); color:#4527a0; border-right:4px solid #7c4dff; }
+    body.dark .ins-rec-box { background:linear-gradient(135deg,#1a0040,#0d1b30); color:#ce93d8; border-right-color:#9c6dff; }
+    .ins-rec-box.ins-rec-buy  { background:linear-gradient(135deg,#e8f5e9,#f1f8e9); color:#1b5e20; border-right-color:#43a047; }
+    body.dark .ins-rec-box.ins-rec-buy  { background:linear-gradient(135deg,#0a1f0a,#0d1b00); color:#a5d6a7; border-right-color:#43a047; }
+    .ins-rec-box.ins-rec-hold { background:linear-gradient(135deg,#fffde7,#fff8e1); color:#e65100; border-right-color:#f9a825; }
+    body.dark .ins-rec-box.ins-rec-hold { background:linear-gradient(135deg,#1a1500,#1f1a00); color:#ffe082; border-right-color:#f9a825; }
+    .ins-rec-box.ins-rec-sell { background:linear-gradient(135deg,#ffebee,#fce4ec); color:#b71c1c; border-right-color:#e53935; }
+    body.dark .ins-rec-box.ins-rec-sell { background:linear-gradient(135deg,#1a0000,#1f0010); color:#ef9a9a; border-right-color:#e53935; }
   </style>
 </head>
 <body>
@@ -1334,7 +1402,7 @@
   <div class="toolbar-brand">
     <span class="toolbar-logo">📈</span>
     <div>
-      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v105.0</span></div>
+      <div class="toolbar-title">מניות <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v105.7</span></div>
       <div class="toolbar-subtitle">מעקב ניירות ערך</div>
     </div>
   </div>
@@ -1391,6 +1459,7 @@
     </table>
   </div>
   <div id="research-cards"></div>
+  <div id="insights-panel"></div>
   <div id="forex-chart-wrap">
     <div class="forex-chart-title">דולר / שקל — שנה אחרונה</div>
     <div class="forex-chart-box"><canvas id="forex-chart-canvas"></canvas></div>
@@ -1795,7 +1864,7 @@ function getAllAssets() {
 
 
 function renderUnifiedTable() {
-  if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') {
+  if (['__research__','__ath__','__insights__'].includes(STATE.activeFilters[0])) {
     const tblEl = document.querySelector('.market-table');
     tblEl?.classList.remove('indices-mode');
     tblEl?.classList.remove('stocks-compact');
@@ -2005,7 +2074,7 @@ function escHtml(str) {
    REFRESH & COUNTDOWN
 ══════════════════════════════════════════════════════════════ */
 async function refreshQuotes() {
-  if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') {
+  if (['__research__','__ath__','__insights__'].includes(STATE.activeFilters[0])) {
     refreshMarket();
     return;
   }
@@ -3461,8 +3530,299 @@ function renderATHTable(data) {
   tbody.insertBefore(info, tbody.firstChild);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   INSIGHTS
+══════════════════════════════════════════════════════════════ */
+function _parseRec(summary) {
+  if (!summary) return { level: 3, line: null };
+  const lines = summary.split('\n');
+  const recLine = lines.find(l => l.replace(/[\*_\s]/g, '').startsWith('המלצה:'));
+  if (!recLine) return { level: 3, line: null };
+  const clean = recLine.replace(/[\*_]/g, '').trim();
+  const level = clean.includes('✅') ? 0 : clean.includes('⏸️') ? 1 : clean.includes('❌') ? 2 : 3;
+  return { level, line: clean };
+}
+
+async function loadAndRenderInsights() {
+  const panel = document.querySelector('.panel-market');
+  panel?.classList.remove('ath-mode-active', 'research-mode-active', 'profit-mode-active');
+  panel?.classList.add('insights-mode-active');
+  document.querySelector('.market-table')?.classList.remove('research-mode', 'ath-mode');
+
+  const insPanel = document.getElementById('insights-panel');
+  insPanel.innerHTML = `<div style="text-align:center;padding:28px;color:#aaa"><span class="spinner"></span> טוען תובנות...</div>`;
+
+  const symbols = STATE.watchlist
+    .filter(i => i.category === 'מניות חול' || i.category === 'מעקב')
+    .map(i => i.symbol);
+
+  if (symbols.length === 0) {
+    insPanel.innerHTML = `<div style="text-align:center;padding:28px;color:#aaa">אין מניות חול או מעקב</div>`;
+    return;
+  }
+
+  try {
+    const missingRes = symbols.filter(s => !STATE.researchData[s]);
+    const fetchAI = Object.keys(STATE.aiSummaries).length === 0;
+    const promises = [];
+    if (missingRes.length > 0) {
+      promises.push(
+        fetch(`/proxy/research?symbols=${missingRes.map(encodeURIComponent).join(',')}`,
+              { signal: AbortSignal.timeout(30000) })
+          .then(r => r.ok ? r.json() : [])
+          .then(data => data.forEach(d => { STATE.researchData[d.symbol] = d; }))
+      );
+    }
+    if (fetchAI) {
+      promises.push(
+        db.collection('ai_summaries').get()
+          .then(snap => snap.forEach(d => { STATE.aiSummaries[d.id] = d.data(); }))
+          .catch(() => {})
+      );
+    }
+    await Promise.all(promises);
+    renderInsights();
+  } catch(e) {
+    insPanel.innerHTML = `<div style="text-align:center;padding:24px;color:#e53935">שגיאה: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function _makeInsSection(icon, title, count, label, startOpen) {
+  const hdr = document.createElement('div');
+  hdr.className = 'ins-section-hdr';
+  hdr.innerHTML = `
+    <span>${icon} ${title}</span>
+    <span class="ins-count">${count} ${label}</span>
+    <span class="ins-toggle-arrow ${startOpen ? 'open' : ''}">▶</span>`;
+
+  const body = document.createElement('div');
+  body.className = 'ins-section-body' + (startOpen ? '' : ' collapsed');
+
+  hdr.addEventListener('click', () => {
+    const open = !body.classList.contains('collapsed');
+    body.classList.toggle('collapsed', open);
+    hdr.querySelector('.ins-toggle-arrow').classList.toggle('open', !open);
+  });
+  return { hdr, body };
+}
+
+function renderInsights() {
+  const insPanel = document.getElementById('insights-panel');
+  insPanel.innerHTML = '';
+
+  const symbols = STATE.watchlist
+    .filter(i => i.category === 'מניות חול' || i.category === 'מעקב')
+    .map(i => i.symbol);
+
+  // Stock selector — alphabetical A-Z
+  const searchSel = document.createElement('select');
+  searchSel.id = 'ins-stock-select';
+  searchSel.className = 'ins-search';
+  searchSel.autocomplete = 'off';
+  const allOpt = document.createElement('option');
+  allOpt.value = '';
+  allOpt.selected = true;
+  allOpt.textContent = '— כל המניות —';
+  searchSel.appendChild(allOpt);
+  [...symbols].sort((a, b) => a.localeCompare(b)).forEach(sym => {
+    const name = STATE.marketData[sym]?.name || '';
+    const opt  = document.createElement('option');
+    opt.value  = sym;
+    opt.textContent = name ? `${sym} — ${name}` : sym;
+    searchSel.appendChild(opt);
+  });
+  // Force empty selection — defend against browser autofill
+  searchSel.value = '';
+
+  const _applyInsSearch = () => {
+    const q = searchSel.value; // exact symbol or ""
+    insPanel.querySelectorAll('.ins-section-body').forEach(body => {
+      const activeBtn = body.querySelector('.ins-filter-btn.active');
+      const lvl = activeBtn ? parseInt(activeBtn.dataset.level ?? '-1') : -1;
+      body.querySelectorAll('.ins-card').forEach(c => {
+        const matchSearch = !q || c.dataset.symbol === q;
+        const matchFilter = lvl === -1 || parseInt(c.dataset.level ?? '3') === lvl;
+        c.style.display = (matchSearch && matchFilter) ? '' : 'none';
+      });
+      // Auto-open section when a stock is selected and it has a visible card
+      if (q && [...body.querySelectorAll('.ins-card')].some(c => c.style.display !== 'none')) {
+        body.classList.remove('collapsed');
+        body.previousElementSibling?.querySelector('.ins-toggle-arrow')?.classList.add('open');
+      }
+    });
+  };
+  searchSel.addEventListener('change', _applyInsSearch);
+  insPanel.appendChild(searchSel);
+
+  const todayMs = new Date().setHours(0,0,0,0);
+  const dayMs   = 86400000;
+
+  const allData = symbols.map(sym => {
+    const rd  = STATE.researchData[sym] || { symbol: sym };
+    const ai  = STATE.aiSummaries[sym];
+    const mkt = STATE.marketData[sym] || {};
+    const { level, line } = _parseRec(ai?.summary);
+    return { sym, rd, ai, mkt, level, recLine: line };
+  });
+
+  // ── Section 1: upcoming earnings — open by default ──
+  const withEarns = allData
+    .filter(d => d.rd.daysToEarnings != null && d.rd.daysToEarnings >= -1)
+    .sort((a, b) => a.rd.daysToEarnings - b.rd.daysToEarnings);
+
+  {
+    const { hdr, body } = _makeInsSection('📅', 'דוחות קרובים', withEarns.length, 'מניות עם תאריך דוח', true);
+    if (withEarns.length > 0) {
+      withEarns.forEach(d => body.appendChild(_buildInsCard(d, todayMs, dayMs)));
+    } else {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'text-align:center;padding:16px;color:#aaa;font-size:0.85rem;flex-shrink:0';
+      empty.textContent = 'אין דוחות קרובים ברשימה';
+      body.appendChild(empty);
+    }
+    insPanel.appendChild(hdr);
+    insPanel.appendChild(body);
+  }
+
+  // ── Section 2: all stocks — closed by default ──
+  const sortedAll = [...allData].sort((a, b) => {
+    if (a.level !== b.level) return a.level - b.level;
+    const na = (a.mkt.name || a.sym).toLowerCase();
+    const nb = (b.mkt.name || b.sym).toLowerCase();
+    return na.localeCompare(nb, 'he');
+  });
+  const { hdr: h2, body: b2 } = _makeInsSection('📊', 'כל המניות — לפי המלצה', allData.length, 'מניות למעקב', false);
+
+  // Filter pills
+  const filterDefs = [
+    { level: -1, icon: 'הכל',  cls: '' },
+    { level:  0, icon: '✅',   cls: 'f-buy' },
+    { level:  1, icon: '⏸️',   cls: 'f-hold' },
+    { level:  2, icon: '❌',   cls: 'f-sell' },
+    { level:  3, icon: '❓',   cls: 'f-none' },
+  ];
+  const filterRow = document.createElement('div');
+  filterRow.className = 'ins-filter-row';
+
+  let activeLevel = -1;
+  const applyFilter = () => {
+    const q = document.getElementById('ins-stock-select')?.value || '';
+    b2.querySelectorAll('.ins-card').forEach(c => {
+      const matchSearch = !q || c.dataset.symbol === q;
+      const matchFilter = activeLevel === -1 || parseInt(c.dataset.level ?? '3') === activeLevel;
+      c.style.display = (matchSearch && matchFilter) ? '' : 'none';
+    });
+  };
+
+  filterDefs.forEach(({ level, icon, cls }) => {
+    const count = level === -1 ? allData.length : allData.filter(d => d.level === level).length;
+    if (count === 0 && level !== -1) return;
+    const btn = document.createElement('button');
+    btn.className = `ins-filter-btn ${cls}` + (level === -1 ? ' active' : '');
+    btn.dataset.level = level;
+    btn.innerHTML = `${icon} <span class="ins-filter-count">${count}</span>`;
+    btn.addEventListener('click', () => {
+      filterRow.querySelectorAll('.ins-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeLevel = level;
+      applyFilter();
+    });
+    filterRow.appendChild(btn);
+  });
+  b2.appendChild(filterRow);
+
+  sortedAll.forEach(d => b2.appendChild(_buildInsCard(d, todayMs, dayMs)));
+  insPanel.appendChild(h2);
+  insPanel.appendChild(b2);
+}
+
+function _buildInsYahooHeb(rd) {
+  const pills = [];
+  if (rd.aboveMa150 != null) {
+    const pct = rd.ma150Pct != null ? Math.abs(rd.ma150Pct).toFixed(1) : '?';
+    pills.push(rd.aboveMa150 ? `↑ מעל MA150 ב-${pct}%` : `↓ מתחת MA150 ב-${pct}%`);
+  }
+  if (rd.daysToEarnings != null) {
+    const d = rd.daysToEarnings;
+    const txt = d === 0 ? 'דוח היום!' : d === 1 ? 'דוח מחר' : d === -1 ? 'דוח אתמול' : `דוח בעוד ${d} ימים`;
+    pills.push(txt);
+  }
+  const nc = (rd.news || []).length;
+  if (nc > 0) pills.push(`${nc} כותרות ביאהו`);
+  if (!pills.length) return '';
+  return `<div class="ins-yahoo-heb">${pills.map(p => `<span class="ins-yahoo-pill">${p}</span>`).join('')}</div>`;
+}
+
+function _buildInsCard(d, todayMs, dayMs) {
+  const { sym, rd, ai, mkt, level, recLine } = d;
+  const name  = mkt.name || rd.symbol;
+  const price = mkt.price ?? rd.price;
+  const earnSoon = rd.daysToEarnings != null && rd.daysToEarnings >= -1 && rd.daysToEarnings <= 1;
+  const recClass = ['ins-buy','ins-hold','ins-sell','ins-none'][level] ?? 'ins-none';
+
+  const card = document.createElement('div');
+  card.className = `ins-card ${recClass}` + (earnSoon ? ' ins-earn-soon' : '');
+  card.dataset.symbol = sym;
+  card.dataset.name   = name;
+  card.dataset.level  = level;
+
+  // MA badge (reuse existing helper)
+  const maTag = _aiMaTag(ai?.aboveMa150 != null ? ai : (rd.aboveMa150 != null ? rd : null));
+
+  // Earnings badge
+  let earnTag = '';
+  if (rd.earningsDate) {
+    const earnMs  = rd.earningsDate * 1000;
+    const diff    = Math.round((earnMs - todayMs) / dayMs);
+    const label   = diff === 0 ? 'היום!' : diff === -1 ? 'אתמול' : diff === 1 ? 'מחר' : `${diff} ימים`;
+    const dateStr = new Date(earnMs).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+    earnTag = earnSoon
+      ? `<span class="ins-earn-soon-tag">📅 ${dateStr} — ${label}</span>`
+      : `<span class="ai-earn-tag">📅 דוח ${dateStr}</span>`;
+  }
+
+  const priceStr = price != null ? fmtPrice(price, 'USD') : '—';
+  const updStr   = ai?.updatedAt
+    ? new Date(ai.updatedAt).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) : '';
+
+  // Yahoo data summary in Hebrew
+  const newsHtml = _buildInsYahooHeb(rd);
+
+  // AI body
+  let aiHtml = `<div class="ins-no-ai">אין סיכום AI — לחץ 🔍 במחקר</div>`;
+  if (ai?.summary) {
+    const txt   = ai.summary.replace(/\s*\[\d+\]/g, '');
+    const lines = txt.split('\n');
+    const rIdx  = lines.findIndex(l => l.replace(/[\*_\s]/g, '').startsWith('המלצה:'));
+    const toHtml = t => escHtml(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    const recBoxClass = ['ins-rec-buy','ins-rec-hold','ins-rec-sell',''][level] ?? '';
+    if (rIdx >= 0) {
+      const body = toHtml(lines.slice(0, rIdx).join('\n').trim());
+      const rec  = `<div class="ins-rec-box ${recBoxClass}">${escHtml(recLine)}</div>`;
+      aiHtml = `<div class="ins-ai">${body}</div>${rec}`;
+    } else {
+      aiHtml = `<div class="ins-ai">${toHtml(txt)}</div>`;
+    }
+    if (updStr) aiHtml += `<span class="ins-upd">עודכן ${updStr}</span>`;
+  }
+
+  card.innerHTML = `
+    <div class="ins-card-header">
+      <span class="ins-sym">${escHtml(sym)}</span>
+      <span class="ins-name">${escHtml(name)}</span>
+      <span class="ins-price">${priceStr}</span>
+    </div>
+    <div class="ins-badges">${maTag}${earnTag}</div>
+    ${newsHtml}
+    ${aiHtml}`;
+
+  card.querySelector('.ins-card-header')
+    .addEventListener('click', e => { e.stopPropagation(); openChartModal(sym, name); });
+  return card;
+}
+
 function restoreStandardThead() {
-  document.querySelector('.panel-market')?.classList.remove('research-mode-active', 'ath-mode-active', 'profit-mode-active');
+  document.querySelector('.panel-market')?.classList.remove('research-mode-active', 'ath-mode-active', 'profit-mode-active', 'insights-mode-active');
   document.querySelector('.market-table')?.classList.remove('research-mode');
   document.querySelector('.market-table')?.classList.remove('ath-mode');
   const cards = document.getElementById('research-cards');
@@ -3489,6 +3849,7 @@ function applyFilterColor(sel) {
   const color = val === '__research__' ? '#00838f'
               : val === '__ath__'      ? '#ff8f00'
               : val === '__profit__'   ? '#2e7d32'
+              : val === '__insights__' ? '#6a1b9a'
               : CONFIG.CAT_COLOR[val]  || '#1976d2';
   const dark  = document.body.classList.contains('dark');
   sel.style.borderColor = color;
@@ -3546,6 +3907,13 @@ function renderFilterBar() {
   if (STATE.activeFilters[0] === '__profit__') profOpt.selected = true;
   sel.appendChild(profOpt);
 
+  // Insights option
+  const insOpt = document.createElement('option');
+  insOpt.value = '__insights__';
+  insOpt.textContent = '💡 תובנות';
+  if (STATE.activeFilters[0] === '__insights__') insOpt.selected = true;
+  sel.appendChild(insOpt);
+
     sel.addEventListener('change', () => {
     applyFilterColor(sel);
     // Always clear forex chart unless switching TO מטבעות
@@ -3565,12 +3933,17 @@ function renderFilterBar() {
     }
     if (sel.value === '__profit__') {
       STATE.activeFilters = ['__profit__'];
-      if (STATE.activeFilters[0] === '__research__' || STATE.activeFilters[0] === '__ath__') restoreStandardThead();
+      if (['__research__','__ath__','__insights__'].includes(STATE.activeFilters[0])) restoreStandardThead();
       document.querySelector('.panel-market')?.classList.add('profit-mode-active');
       return;
     }
+    if (sel.value === '__insights__') {
+      STATE.activeFilters = ['__insights__'];
+      loadAndRenderInsights();
+      return;
+    }
     // Restore special modes
-    if (['__research__','__ath__','__profit__'].includes(STATE.activeFilters[0])) {
+    if (['__research__','__ath__','__profit__','__insights__'].includes(STATE.activeFilters[0])) {
       restoreStandardThead();
       document.querySelector('.panel-market')?.classList.remove('profit-mode-active');
     }
